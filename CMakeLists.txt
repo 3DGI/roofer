@@ -9,12 +9,8 @@ set_target_properties(
   POSITION_INDEPENDENT_CODE ON
 )
 
-if(EXISTS "${PROJECT_SOURCE_DIR}/.gitmodules")
-  execute_process(
-    COMMAND             git submodule update --init region-grower glm
-    WORKING_DIRECTORY   ${PROJECT_SOURCE_DIR}/thirdparty
-    )
-endif()
+# add polyscope
+add_subdirectory(thirdparty/polyscope)
 
 find_package(laslib CONFIG REQUIRED)
 find_package(Eigen3 CONFIG REQUIRED)
@@ -30,46 +26,20 @@ if (MSVC)
 endif()
 
 add_executable(roofer
-  src/stepedge_nodes.cpp
-  src/node_optimise_arrangement.cpp
-  src/points_in_polygons.cpp
-  src/point_edge.cpp
-  src/region_growing.cpp
-  src/node_pcmesh_quality.cpp
-  src/Raster.cpp
-  src/heightfield_nodes.cpp
-  src/polygon_triangulate.cpp
-  src/line_regulariser.cpp
-  src/build_arrangement_lines.cpp
-  # src/build_arrangement_rings.cpp
-  src/arrangement.cpp
-  src/snap_round.cpp
-  src/polygon_offset.cpp
-  src/alpha_shape.cpp
-  src/data_coverage_node.cpp
-  src/detect_planes_node.cpp
-  src/polygon_util.cpp
-  src/cdt_util.cpp
-  src/trisnap.cpp
-  src/pip_util.cpp
-  src/ClusterPointCloudNode.cpp
-  src/ContourRegulariserNode.cpp
-  src/MaxInscribedCircleNode.cpp
-  src/MeshSimplifyFastQuadNode.cpp
-  src/MeshClipperNode.cpp
-  src/MeshSimplify.cpp
-  src/MeshGridSimplify.cpp
-  src/Mesh2TriangleCollectionNode.cpp
+  apps/roofer.cpp
+)
+set_target_properties(
+  roofer PROPERTIES 
+  CXX_STANDARD 17
 )
 
 target_include_directories(roofer PRIVATE
   src
   thirdparty/ptinpoly
-  thirdparty/region-grower
-  ${GLM_INCLUDE_DIRECTORIES}
 )
 target_link_libraries( roofer PRIVATE
-  ptinpoly
-  CGAL::CGAL CGAL::CGAL_Core Eigen3::Eigen
-  LASlib
+  polyscope
+  # ptinpoly
+  # CGAL::CGAL CGAL::CGAL_Core Eigen3::Eigen
+  # LASlib
 )
