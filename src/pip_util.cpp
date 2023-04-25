@@ -15,7 +15,7 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "pip_util.hpp"
 
-pGridSet build_grid(const geoflow::vec3f& ring) {
+pGridSet build_grid(const roofer::vec3f& ring) {
   int Grid_Resolution = 20;
 
   int size = ring.size();

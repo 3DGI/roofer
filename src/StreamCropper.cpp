@@ -1,12 +1,18 @@
+#include "StreamCropper.hpp"
+
 #include <lasreader.hpp>
 #include "pip_util.hpp"
+#include "Raster.hpp"
+
+#include <filesystem>
+namespace fs = std::filesystem;
 
 namespace roofer {
 
 class PointsInPolygonsCollector  {
-  gfSingleFeatureInputTerminal& polygons;
-  gfSingleFeatureOutputTerminal& point_clouds;
-  gfSingleFeatureOutputTerminal& ground_elevations;
+  std::vector<LinearRing>& polygons;
+  std::vector<PointCollection>& point_clouds;
+  vec1f& ground_elevations;
 
   // ground elevations
   std::vector<std::vector<arr3f>> ground_buffer_points;
@@ -23,10 +29,10 @@ class PointsInPolygonsCollector  {
   float min_ground_elevation = std::numeric_limits<float>::max();
 
   PointsInPolygonsCollector(
-    gfSingleFeatureInputTerminal& polygons, 
-    gfSingleFeatureInputTerminal& buf_polygons, 
-    gfSingleFeatureOutputTerminal& point_clouds, 
-    gfSingleFeatureOutputTerminal& ground_elevations, 
+    std::vector<LinearRing>& polygons, 
+    std::vector<LinearRing>& buf_polygons, 
+    std::vector<PointCollection>& point_clouds, 
+    vec1f& ground_elevations, 
     float& cellsize, 
     float& buffer,
     int ground_class=2,
@@ -34,19 +40,19 @@ class PointsInPolygonsCollector  {
     )
     : polygons(polygons), point_clouds(point_clouds), ground_elevations(ground_elevations), ground_class(ground_class), building_class(building_class) {
     // point_clouds_ground.resize(polygons.size());
-    point_clouds.resize<PointCollection>(polygons.size());
+    point_clouds.resize(polygons.size());
     z_ground.resize(polygons.size());
     ground_buffer_points.resize(polygons.size());
 
     for (size_t i=0; i< point_clouds.size(); ++i) {
-      point_clouds.get<PointCollection&>(i).add_attribute_vec1i("classification");
+      point_clouds.at(i).add_attribute_vec1i("classification");
     }
 
     // make a vector of BOX2D for the set of input polygons
     // build point in polygon grids
     for (size_t i=0; i<polygons.size(); ++i) {
-      auto ring = polygons.get<LinearRing>(i);
-      auto buf_ring = buf_polygons.get<LinearRing>(i);
+      auto ring = polygons.at(i);
+      auto buf_ring = buf_polygons.at(i);
       poly_grids.push_back(build_grid(ring));
       buf_poly_grids.push_back(build_grid(buf_ring));
       completearea_bb.add(buf_ring.box());
@@ -64,7 +70,7 @@ class PointsInPolygonsCollector  {
 
     // populate pindex_vals
     for (size_t i=0; i<buf_polygons.size(); ++i) {
-      auto ring = buf_polygons.get<LinearRing>(i);
+      auto ring = buf_polygons.at(i);
       auto& b = ring.box();
       size_t r_min = pindex.getRow(b.min()[0], b.min()[1]);
       size_t c_min = pindex.getCol(b.min()[0], b.min()[1]);
@@ -114,7 +120,7 @@ class PointsInPolygonsCollector  {
     std::vector<size_t> poly_intersect;
     for(size_t& poly_i : pindex_vals[lincoord]) {
       if (GridTest(buf_poly_grids[poly_i], pipoint)) {
-        auto& point_cloud = point_clouds.get<PointCollection&>(poly_i);
+        auto& point_cloud = point_clouds.at(poly_i);
         auto classification = point_cloud.get_attribute_vec1i("classification");
         
         if (point_class == ground_class) {
@@ -137,7 +143,7 @@ class PointsInPolygonsCollector  {
 
     if (point_class == building_class) {
       if (poly_intersect.size() == 1) {
-        auto& point_cloud = point_clouds.get<PointCollection&>(poly_intersect[0]);
+        auto& point_cloud = point_clouds.at(poly_intersect[0]);
         auto classification = point_cloud.get_attribute_vec1i("classification");
         point_cloud.push_back(point);
         (*classification).push_back(6);
@@ -153,11 +159,11 @@ class PointsInPolygonsCollector  {
       float& max_density_delta, 
       float& coverage_threshold,
       bool& clear_if_insufficient,
-      gfSingleFeatureOutputTerminal& poly_areas,
-      gfSingleFeatureOutputTerminal& poly_pt_counts_bld,
-      gfSingleFeatureOutputTerminal& poly_pt_counts_grd,
-      gfSingleFeatureOutputTerminal& poly_ptcoverage_class,
-      gfSingleFeatureOutputTerminal& poly_densities
+      vec1f& poly_areas,
+      vec1i& poly_pt_counts_bld,
+      vec1i& poly_pt_counts_grd,
+      vec1s& poly_ptcoverage_class,
+      vec1f& poly_densities
     ) {
     
     // compute poly properties
@@ -165,8 +171,8 @@ class PointsInPolygonsCollector  {
     std::unordered_map<size_t, PolyInfo> poly_info;
     
     for (size_t poly_i=0; poly_i < polygons.size(); poly_i++) {
-      auto& polygon = polygons.get<LinearRing>(poly_i);
-      auto& point_cloud = point_clouds.get<PointCollection&>(poly_i);
+      auto& polygon = polygons.at(poly_i);
+      auto& point_cloud = point_clouds.at(poly_i);
       auto classification = point_cloud.get_attribute_vec1i("classification");
       PolyInfo info;
       
@@ -193,7 +199,7 @@ class PointsInPolygonsCollector  {
 
     // merge buffer ground points into regular point_clouds now that the proper counts have been established
     for (size_t poly_i; poly_i < polygons.size(); poly_i++) {
-      auto& point_cloud = point_clouds.get<PointCollection&>(poly_i);
+      auto& point_cloud = point_clouds.at(poly_i);
       auto classification = point_cloud.get_attribute_vec1i("classification");
       for (auto& p : ground_buffer_points[poly_i]) {
         point_cloud.push_back(p);
@@ -227,7 +233,7 @@ class PointsInPolygonsCollector  {
       });
       
       // now the most suitable polygon (footprint) is the last in the list. We will assign this point to that footprint.
-      auto& point_cloud = point_clouds.get<PointCollection&>( polylist.back() );
+      auto& point_cloud = point_clouds.at( polylist.back() );
       auto classification = point_cloud.get_attribute_vec1i("classification");
       point_cloud.push_back(*p);
       (*classification).push_back(6);
@@ -273,7 +279,7 @@ class PointsInPolygonsCollector  {
 
       if ( (info.pt_count_bld / info.area) < cov_thres ) {
         if (clear_if_insufficient) {
-          auto& point_cloud = point_clouds.get<PointCollection&>( poly_i );
+          auto& point_cloud = point_clouds.at( poly_i );
           point_cloud.clear();
         }
         poly_ptcoverage_class.push_back(std::string("insufficient"));
@@ -324,133 +330,153 @@ void getOgcWkt(LASheader* lasheader, std::string& wkt) {
     }
   }
   std::cout << wkt << std::endl;
-}
+};
 
-void LASInPolygonsNode::process() {
-  auto& polygons = vector_input("polygons");
-  auto& buf_polygons = vector_input("buf_polygons");
+struct PointCloudCropper : public PointCloudCropperInterface {
+  std::string filepaths_ = "";
+  float cellsize = 50.0;
+  float buffer = 1.0;
+  float ground_percentile=0.05;
+  float max_density_delta=0.05;
+  float coverage_threshold=2.0;
+  int ground_class = 2;
+  int building_class = 6;
+  bool clear_if_insufficient = true;
+  std::string wkt_="";
 
-  auto& point_clouds = vector_output("point_clouds");
-  auto& ground_elevations = vector_output("ground_elevations");
-  auto& poly_areas = vector_output("poly_areas");
-  auto& poly_pt_counts_bld = vector_output("poly_pt_counts_bld");
-  auto& poly_pt_counts_grd = vector_output("poly_pt_counts_grd");
-  auto& poly_ptcoverage_class = vector_output("poly_ptcoverage_class");
-  auto& poly_densities = vector_output("poly_densities");
+  using PointCloudCropperInterface::PointCloudCropperInterface;
 
-  PointsInPolygonsCollector pip_collector{
-    polygons, 
-    buf_polygons, 
-    point_clouds, 
-    ground_elevations, 
-    cellsize, 
-    buffer, 
-    ground_class, 
-    building_class
-  };
+  void process (
+    std::string source,
+    std::vector<LinearRing>& polygons,
+    std::vector<LinearRing>& buf_polygons,
+    std::vector<PointCollection>& point_clouds
+  ) {
+    vec1f ground_elevations;
+    vec1f poly_areas;
+    vec1i poly_pt_counts_bld;
+    vec1i poly_pt_counts_grd;
+    vec1s poly_ptcoverage_class;
+    vec1f poly_densities;
 
-  auto filepaths = manager.substitute_globals(filepaths_);
+    PointsInPolygonsCollector pip_collector{
+      polygons, 
+      buf_polygons, 
+      point_clouds, 
+      ground_elevations, 
+      cellsize, 
+      buffer, 
+      ground_class, 
+      building_class
+    };
 
-  std::vector<std::string> lasfiles;
-  if(fs::is_directory(filepaths)) {
-    for(auto& p: fs::directory_iterator(filepaths)) {
-      auto ext = p.path().extension();
-      if (ext == ".las" ||
-          ext == ".LAS" ||
-          ext == ".laz" ||
-          ext == ".LAZ")
+    auto filepaths = source;
+
+    std::vector<std::string> lasfiles;
+    if(fs::is_directory(filepaths)) {
+      for(auto& p: fs::directory_iterator(filepaths)) {
+        auto ext = p.path().extension();
+        if (ext == ".las" ||
+            ext == ".LAS" ||
+            ext == ".laz" ||
+            ext == ".LAZ")
+        {
+          lasfiles.push_back(p.path().string());
+        }
+      }
+    } else {
+      std::cout << "filepaths_ is not a directory, assuming a list of LAS files" << std::endl;
+      for (std::string filepath : split_string(filepaths, " "))
       {
-        lasfiles.push_back(p.path().string());
+        if (fs::exists(filepath)) lasfiles.push_back(filepath);
+        else std::cout << filepath << " does not exist" << std::endl;
       }
     }
-  } else {
-    std::cout << "filepaths_ is not a directory, assuming a list of LAS files" << std::endl;
-    for (std::string filepath : split_string(filepaths, " "))
+
+    for (auto lasfile : lasfiles)
     {
-      if (fs::exists(filepath)) lasfiles.push_back(filepath);
-      else std::cout << filepath << " does not exist" << std::endl;
-    }
-  }
+      LASreadOpener lasreadopener;
+      lasreadopener.set_file_name(lasfile.c_str());
+      LASreader* lasreader = lasreadopener.open();
 
-  for (auto lasfile : lasfiles)
-  {
-    LASreadOpener lasreadopener;
-    lasreadopener.set_file_name(lasfile.c_str());
-    LASreader* lasreader = lasreadopener.open();
+      std::string wkt = wkt_;
+      if(wkt.size()==0) {
+        getOgcWkt(&lasreader->header, wkt);
+      }
+      if (wkt.size()!=0){
+       pjHelper.set_fwd_crs_transform(wkt.c_str());
+      }
+      
+      if (!lasreader){
+        std::cout << "cannot read las file: " << lasfile << "\n";
+        continue;
+      }
 
-    std::string wkt = manager.substitute_globals(wkt_);
-    if(wkt.size()==0) {
-      getOgcWkt(&lasreader->header, wkt);
-    }
-    if (wkt.size()!=0){
-      manager.set_fwd_crs_transform(wkt.c_str());
-    }
-    
-    if (!lasreader){
-      std::cout << "cannot read las file: " << lasfile << "\n";
-      continue;
-    }
+      Box file_bbox;
+      file_bbox.add(pjHelper.coord_transform_fwd(
+        lasreader->get_min_x(),
+        lasreader->get_min_y(),
+        lasreader->get_min_z()
+      ));
+      file_bbox.add(pjHelper.coord_transform_fwd(
+        lasreader->get_max_x(),
+        lasreader->get_max_y(),
+        lasreader->get_max_z()
+      ));
 
-    Box file_bbox;
-    file_bbox.add(manager.coord_transform_fwd(
-      lasreader->get_min_x(),
-      lasreader->get_min_y(),
-      lasreader->get_min_z()
-    ));
-    file_bbox.add(manager.coord_transform_fwd(
-      lasreader->get_max_x(),
-      lasreader->get_max_y(),
-      lasreader->get_max_z()
-    ));
+      if(!file_bbox.intersects(pip_collector.completearea_bb)){
+        std::cout << "no intersection footprints with las file: " << lasfile << "\n";
+        continue;
+      }
 
-    if(!file_bbox.intersects(pip_collector.completearea_bb)){
-      std::cout << "no intersection footprints with las file: " << lasfile << "\n";
-      continue;
-    }
-
-    // tell lasreader our area of interest. It will then use quadtree indexing if available (.lax file created with lasindex)
-    manager.set_rev_crs_transform(wkt.c_str());
-    const auto aoi_min = manager.coord_transform_rev(pip_collector.completearea_bb.min());
-    const auto aoi_max = manager.coord_transform_rev(pip_collector.completearea_bb.max());
-    manager.clear_rev_crs_transform();
-    std::cout << lasreader->npoints << std::endl;
-    std::cout << lasreader->get_min_x() << " " << lasreader->get_min_y() << " " << lasreader->get_min_z() << std::endl;
-    std::cout << aoi_min[0] << " " << aoi_min[1] << " " << aoi_min[2] << std::endl;
-    std::cout << lasreader->get_max_x() << " " << lasreader->get_max_y() << " " << lasreader->get_max_z() << std::endl;
-    std::cout << aoi_max[0] << " " << aoi_max[1] << " " << aoi_max[2] << std::endl;
-    lasreader->inside_rectangle(
-      aoi_min[0], 
-      aoi_min[1], 
-      aoi_max[0], 
-      aoi_max[1]
-    );
-
-    while (lasreader->read_point()) {
-      pip_collector.add_point(
-        manager.coord_transform_fwd(
-          lasreader->point.get_x(), 
-          lasreader->point.get_y(), 
-          lasreader->point.get_z()
-        ), 
-        lasreader->point.get_classification()
+      // tell lasreader our area of interest. It will then use quadtree indexing if available (.lax file created with lasindex)
+      pjHelper.set_rev_crs_transform(wkt.c_str());
+      const auto aoi_min = pjHelper.coord_transform_rev(pip_collector.completearea_bb.min());
+      const auto aoi_max = pjHelper.coord_transform_rev(pip_collector.completearea_bb.max());
+      pjHelper.clear_rev_crs_transform();
+      std::cout << lasreader->npoints << std::endl;
+      std::cout << lasreader->get_min_x() << " " << lasreader->get_min_y() << " " << lasreader->get_min_z() << std::endl;
+      std::cout << aoi_min[0] << " " << aoi_min[1] << " " << aoi_min[2] << std::endl;
+      std::cout << lasreader->get_max_x() << " " << lasreader->get_max_y() << " " << lasreader->get_max_z() << std::endl;
+      std::cout << aoi_max[0] << " " << aoi_max[1] << " " << aoi_max[2] << std::endl;
+      lasreader->inside_rectangle(
+        aoi_min[0], 
+        aoi_min[1], 
+        aoi_max[0], 
+        aoi_max[1]
       );
-    }
-    manager.clear_fwd_crs_transform();
-    lasreader->close();
-    delete lasreader;
-  }
 
-  pip_collector.do_post_process(
-    ground_percentile, 
-    max_density_delta, 
-    coverage_threshold, 
-    clear_if_insufficient,
-    poly_areas, 
-    poly_pt_counts_bld, 
-    poly_pt_counts_grd, 
-    poly_ptcoverage_class, 
-    poly_densities
-  );
-}
+      while (lasreader->read_point()) {
+        pip_collector.add_point(
+          pjHelper.coord_transform_fwd(
+            lasreader->point.get_x(), 
+            lasreader->point.get_y(), 
+            lasreader->point.get_z()
+          ), 
+          lasreader->point.get_classification()
+        );
+      }
+      pjHelper.clear_fwd_crs_transform();
+      lasreader->close();
+      delete lasreader;
+    }
+
+    pip_collector.do_post_process(
+      ground_percentile, 
+      max_density_delta, 
+      coverage_threshold, 
+      clear_if_insufficient,
+      poly_areas, 
+      poly_pt_counts_bld, 
+      poly_pt_counts_grd, 
+      poly_ptcoverage_class, 
+      poly_densities
+    );
+  }
+};
+
+std::unique_ptr<PointCloudCropperInterface> createPointCloudCropper(projHelperInterface& pjh) {
+  return std::make_unique<PointCloudCropper>(pjh);
+};
 
 }

@@ -13,9 +13,17 @@ set_target_properties(
 add_subdirectory(thirdparty/polyscope)
 
 find_package(laslib CONFIG REQUIRED)
-find_package(Eigen3 CONFIG REQUIRED)
-add_definitions(-DCGAL_EIGEN3_ENABLED)
+# find_package(Eigen3 CONFIG REQUIRED)
+# add_definitions(-DCGAL_EIGEN3_ENABLED)
 find_package(CGAL 5.4 QUIET COMPONENTS Core REQUIRED)
+
+# GDAL
+find_package( GDAL CONFIG REQUIRED )
+if (WIN32) # vcpkg doesn't work when there is a version number here
+  find_package(PROJ REQUIRED CONFIG)
+else()
+  find_package(PROJ 9.0.0 REQUIRED CONFIG)
+endif()
 
 if (MSVC)
   # windows.h breaks std::min/std::max, fix by define
@@ -27,6 +35,13 @@ endif()
 
 add_executable(roofer
   apps/roofer.cpp
+  src/common.cpp
+  src/projHelper.cpp
+  src/VectorReaderOGR.cpp
+  src/StreamCropper.cpp
+  src/Raster.cpp
+  src/pip_util.cpp
+  src/ShapeDetector.cpp
 )
 set_target_properties(
   roofer PROPERTIES 
@@ -39,7 +54,9 @@ target_include_directories(roofer PRIVATE
 )
 target_link_libraries( roofer PRIVATE
   polyscope
-  # ptinpoly
-  # CGAL::CGAL CGAL::CGAL_Core Eigen3::Eigen
-  # LASlib
+  PROJ::proj
+  GDAL::GDAL
+  ptinpoly
+  CGAL::CGAL CGAL::CGAL_Core #Eigen3::Eigen
+  LASlib
 )

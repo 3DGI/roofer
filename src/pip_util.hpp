@@ -16,7 +16,7 @@
 #pragma once
 
 #include "ptinpoly.h"
-#include <geoflow/geoflow.hpp>
+#include "datastructures.hpp"
 #include <vector>
 
-pGridSet build_grid(const geoflow::vec3f& ring);
+pGridSet build_grid(const roofer::vec3f& ring);
