@@ -1,6 +1,6 @@
 
-#include "datastructures.hpp"
-#include "projHelper.hpp"
+#include "../datastructures.hpp"
+#include "../projHelper.hpp"
 #include <memory>
 
 namespace roofer {

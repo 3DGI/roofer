@@ -3,9 +3,9 @@
 // #include "polyscope/surface_mesh.h"
 
 #include "projHelper.hpp"
-#include "VectorReader.hpp"
-#include "StreamCropper.hpp"
-#include "ShapeDetector.hpp"
+#include "io/VectorReader.hpp"
+#include "io/StreamCropper.hpp"
+#include "geometry/ShapeDetector.hpp"
 
 std::vector<roofer::PointCollection> point_clouds;
 std::unique_ptr<roofer::ShapeDetectorInterface> ShapeDetector;

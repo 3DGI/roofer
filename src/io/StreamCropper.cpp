@@ -1,8 +1,8 @@
 #include "StreamCropper.hpp"
 
 #include <lasreader.hpp>
-#include "pip_util.hpp"
-#include "Raster.hpp"
+#include "../pip_util.hpp"
+#include "../geometry/Raster.hpp"
 
 #include <filesystem>
 namespace fs = std::filesystem;

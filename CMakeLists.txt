@@ -2,15 +2,15 @@ cmake_minimum_required(VERSION 3.21)
 project (roofer VERSION 0.1)
 
 # ptinpoly
-add_library(ptinpoly STATIC thirdparty/ptinpoly/ptinpoly.c)
+add_library(ptinpoly STATIC external/ptinpoly/ptinpoly.c)
 set_target_properties(
   ptinpoly PROPERTIES 
   C_STANDARD 11
   POSITION_INDEPENDENT_CODE ON
 )
 
-# add polyscope
-add_subdirectory(thirdparty/polyscope)
+#spdlog
+add_subdirectory(external/spdlog)
 
 find_package(laslib CONFIG REQUIRED)
 # find_package(Eigen3 CONFIG REQUIRED)
@@ -33,30 +33,30 @@ if (MSVC)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /fp:precise")
 endif()
 
-add_executable(roofer
-  apps/roofer.cpp
+add_library(rooferlib
   src/common.cpp
   src/projHelper.cpp
-  src/VectorReaderOGR.cpp
-  src/StreamCropper.cpp
-  src/Raster.cpp
+  src/io/VectorReaderOGR.cpp
+  src/io/StreamCropper.cpp
+  src/geometry/Raster.cpp
   src/pip_util.cpp
-  src/ShapeDetector.cpp
+  src/geometry/ShapeDetector.cpp
 )
 set_target_properties(
-  roofer PROPERTIES 
+  rooferlib PROPERTIES 
   CXX_STANDARD 17
 )
 
-target_include_directories(roofer PRIVATE
+target_include_directories(rooferlib PRIVATE
   src
-  thirdparty/ptinpoly
+  external/ptinpoly
 )
-target_link_libraries( roofer PRIVATE
-  polyscope
+target_link_libraries( rooferlib PRIVATE
   PROJ::proj
   GDAL::GDAL
   ptinpoly
   CGAL::CGAL CGAL::CGAL_Core #Eigen3::Eigen
   LASlib
 )
+
+add_subdirectory(apps)

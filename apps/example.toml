@@ -1,0 +1,20 @@
+[input.footprint]
+path = '/home/ravi/git/gfc-building-reconstruction/test-data/wippolder.gpkg'
+
+[[input.pointclouds]]
+name = "AHN3"
+date = "2014"
+quality = 1
+path = '/home/ravi/git/gfc-building-reconstruction/test-data/wippolder.las'
+
+[[input.pointclouds]]
+name = "AHN4"
+date = "2020"
+quality = 0
+path = 'u'
+
+[[input.pointclouds]]
+name = "KAD2020"
+date = "2020"
+quality = 2
+path = 'z'
