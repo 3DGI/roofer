@@ -1,6 +1,7 @@
 #include "select_pointcloud.hpp"
 
 #include <algorithm>
+#include <cmath>
 
 namespace roofer {
 
@@ -25,7 +26,7 @@ namespace roofer {
       return;
     }
     for (const auto& candidate : candidates_quality) {
-      if (roofer::hasEnoughPointCoverage(candidate)) {
+      if (roofer::hasEnoughPointCoverage(candidate, 0.0, 0.0)) {
         candidate_selected = candidate;
         break;
       }
@@ -40,7 +41,7 @@ namespace roofer {
       explanation = PointCloudSelectExplanation::BEST_SUITABLE_QUALITY;
       // TODO: return candidate_selected
     } else {
-      if (roofer::hasEnoughPointCoverage(latest)) {
+      if (roofer::hasEnoughPointCoverage(latest, 0.0, 0.0)) {
         if (roofer::areDifferent(candidate_selected, latest)) {
           // If the two point clouds are different, that means
           // that the object has changed and the selected point
@@ -89,9 +90,14 @@ namespace roofer {
     return a.date < b.date;
   }
 
-  bool hasEnoughPointCoverage(const CandidatePointCloud& pc) {
-    // TODO
-    return true;
+  bool hasEnoughPointCoverage(const CandidatePointCloud& pc,
+                              float threshold_nodata,
+                              float threshold_maxcircle) {
+    float nodata = computeNoDataFraction(pc);
+    bool nodata_good = nodata <= threshold_nodata;
+    float nodata_maxcircle = computeNoDataMaxCircleFraction(pc);
+    bool maxcircle_good = nodata_maxcircle <= threshold_maxcircle;
+    return nodata_good && maxcircle_good;
   }
 
   bool areDifferent(const CandidatePointCloud& a,
@@ -99,4 +105,40 @@ namespace roofer {
     // TODO
     return true;
   }
+
+  size_t countNoData(const Image& img) {
+    size_t cnt(0);
+    for (const auto& val : img.array) {
+      if (val == img.nodataval) {
+        cnt += 1;
+      }
+    }
+    return cnt;
+  }
+
+  float computeNoDataFraction(const CandidatePointCloud& pc) {
+    size_t nodata_cnt = roofer::countNoData(pc.image_bundle.fp);
+    if (nodata_cnt == 0) {
+      return 0;
+    } else {
+      size_t nr_cells = pc.image_bundle.fp.array.size();
+      if (nr_cells == 0) {
+        return 0;
+      } else {
+        double frac = double(nodata_cnt) / double(nr_cells);
+        return float(frac);
+      }
+    }
+  }
+
+  float computeNoDataMaxCircleFraction(const CandidatePointCloud& pc) {
+    if (pc.area == 0 || pc.nodata_radius == 0) {
+      return 0;
+    } else {
+      double pi = std::atan(1) * 4;
+      double nodata_area = std::pow(pc.nodata_radius, 2) * pi;
+      return float(nodata_area / pc.area);
+    }
+  }
+
 }  // namespace roofer

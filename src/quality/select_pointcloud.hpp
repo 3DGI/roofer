@@ -39,10 +39,24 @@ namespace roofer {
                      const CandidatePointCloud& b);
 
   // Determine if the point cloud has enough point coverage for a good
-  // reconstruction.
-  bool hasEnoughPointCoverage(const CandidatePointCloud& pc);
+  // reconstruction. The point cloud has enough coverage if the indicators
+  // are below the given thresholds.
+  // The 'threshold_nodata' is fraction of the footprint [0.0-1.0] with nodata
+  // areas (pixels). The 'threshold_maxcircle' is the fraction of the footprint
+  // [0.0-1.0] covered by the maximum inscribed circle of the largest gap in the
+  // point cloud.
+  bool hasEnoughPointCoverage(const CandidatePointCloud& pc,
+                              float threshold_nodata,
+                              float threshold_maxcircle);
 
   // Determine if the two point clouds describe the same object.
   bool areDifferent(const CandidatePointCloud& a, const CandidatePointCloud& b);
+
+  // Count the pixels that are NoData in the Image.
+  size_t countNoData(const Image& img);
+
+  float computeNoDataFraction(const CandidatePointCloud& pc);
+
+  float computeNoDataMaxCircleFraction(const CandidatePointCloud& pc);
 
 }  // namespace roofer
