@@ -1,6 +1,5 @@
 # Build dirs
-cmake-build-debug
-cmake-build-debug-clang
+cmake-build-*
 
 # IDE
 .idea

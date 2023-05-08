@@ -152,17 +152,19 @@ int main(int argc, const char * argv[]) {
 
   
   // TODO: write out geoflow config + pointcloud / fp for each building
-  // TODO: PC selection algo
   
   for (unsigned i=0; i<footprints.size(); ++i) {
     
-    std::vector<roofer::CandidatePointcloud> candidates;
+    std::vector<roofer::CandidatePointCloud> candidates;
+    candidates.reserve(input_pointclouds.size());
     for (auto& ipc : input_pointclouds) {
       candidates.push_back(
-        {
+        roofer::CandidatePointCloud {
           footprints[i].signed_area(),
           ipc.nodata_radii[i],
+          0, // TODO: get footprint year of construction
           ipc.building_rasters[i],
+          ipc.name,
           ipc.quality,
           ipc.date
         }
@@ -170,12 +172,8 @@ int main(int argc, const char * argv[]) {
     }
 
     int selection;
-    roofer::PointcloudSelectExplanation explanation;
-    roofer::select_pointcloud(
-      candidates,
-      selection,
-      explanation
-    );
+    roofer::PointCloudSelectExplanation explanation;
+    roofer::selectPointCloud(candidates, selection, explanation);
     
     LASWriter->write_pointcloud(
       input_pointclouds[selection].building_clouds[i],
