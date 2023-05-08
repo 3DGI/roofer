@@ -14,7 +14,9 @@ namespace roofer {
       std::string source,
       std::vector<LinearRing>& polygons,
       std::vector<LinearRing>& buf_polygons,
-      std::vector<PointCollection>& point_clouds) = 0;
+      std::vector<PointCollection>& point_clouds,
+      vec1f& ground_elevations
+    ) = 0;
   };
 
   std::unique_ptr<PointCloudCropperInterface> createPointCloudCropper(projHelperInterface& pjh);

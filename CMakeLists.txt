@@ -10,6 +10,7 @@ set_target_properties(
 )
 
 #spdlog
+add_subdirectory(external/fmt EXCLUDE_FROM_ALL)
 add_subdirectory(external/spdlog)
 
 find_package(GEOS CONFIG REQUIRED)
@@ -64,6 +65,7 @@ target_link_libraries( rooferlib PRIVATE
   ptinpoly
   CGAL::CGAL CGAL::CGAL_Core #Eigen3::Eigen
   LASlib
+  fmt::fmt
   spdlog::spdlog
   GEOS::geos_c
 )
