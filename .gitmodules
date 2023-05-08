@@ -1,4 +1,4 @@
-[submodule "thirdparty/polyscope"]
+[submodule "apps/external/polyscope"]
 	path = apps/external/polyscope
 	url = https://github.com/nmwsharp/polyscope.git
 [submodule "external/spdlog"]
