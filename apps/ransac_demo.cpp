@@ -96,8 +96,10 @@ int main(int argc, const char * argv[]) {
 
   // std::string vector_file = "/home/ravi/git/gfc-building-reconstruction/single/test-data/wippolder.gpkg";
   // std::string las_source = "/home/ravi/git/gfc-building-reconstruction/single/test-data/wippolder.las";
-  std::string vector_file = "/mnt/Data/LocalData/Kadaster/true_ortho_experimenten/2021_LAZ_Leiden_Almere/DenHaag/bag_83000_455000.gpkg";
-  std::string las_source = "/mnt/Data/LocalData/Kadaster/true_ortho_experimenten/2021_LAZ_Leiden_Almere/DenHaag/83000_455000.laz";
+  // std::string vector_file = "/mnt/Data/LocalData/Kadaster/true_ortho_experimenten/2021_LAZ_Leiden_Almere/DenHaag/bag_83000_455000.gpkg";
+  // std::string las_source = "/mnt/Data/LocalData/Kadaster/true_ortho_experimenten/2021_LAZ_Leiden_Almere/DenHaag/83000_455000.laz";
+  std::string vector_file = "/mnt/Data/LocalData/Kadaster/true_ortho_experimenten/2021_Eindhoven/LAZ/DSM_1500_4142.gpkg";
+  std::string las_source = "/mnt/Data/LocalData/Kadaster/true_ortho_experimenten/2021_Eindhoven/LAZ/DSM_1500_4142.laz";
   VectorReader->open(vector_file);
   auto polygons = VectorReader->readPolygons();
 
@@ -107,6 +109,10 @@ int main(int argc, const char * argv[]) {
     polygons,
     point_clouds
   );
+
+  for (auto& pc : point_clouds) {
+    std::cout << pc.size() << std::endl;
+  }
 
   // Initialize polyscope
   polyscope::options::programName = "Roofer";

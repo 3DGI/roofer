@@ -1,9 +1,16 @@
 #include "projHelper.hpp"
 #include "io/VectorReader.hpp"
 #include "io/StreamCropper.hpp"
+#include "io/LASWriter.hpp"
+#include "geometry/Raster.hpp"
+#include "geometry/Vector2DOps.hpp"
+#include "geometry/NodataCircleComputer.hpp"
+#include "geometry/PointcloudRasteriser.hpp"
 
 #include "external/argh.h"
 #include "external/toml.hpp"
+
+#include "spdlog/spdlog.h"
 
 #include <iostream>
 #include <filesystem>
@@ -24,6 +31,9 @@ struct InputPointcloud {
   std::string path;
   std::string name;
   int quality;
+  roofer::vec1f nodata_radii;
+  std::vector<roofer::PointCollection> building_clouds;
+  std::vector<roofer::PointCloudImageBundle> building_rasters;
 };
 
 int main(int argc, const char * argv[]) {
@@ -93,14 +103,18 @@ int main(int argc, const char * argv[]) {
   auto pj = roofer::createProjHelper();
   auto VectorReader = roofer::createVectorReaderOGR(*pj);
   auto PointCloudCropper = roofer::createPointCloudCropper(*pj);
+  auto VectorOps = roofer::createVector2DOpsGEOS();
+  auto LASWriter = roofer::createLASWriter(*pj);
 
   VectorReader->open(path_footprint);
-  auto polygons = VectorReader->readPolygons();
+  auto footprints = VectorReader->readPolygons();
 
-  // TODO: simplify + buffer polygons
+  // simplify + buffer footprints
+  VectorOps->simplify_polygons(footprints);
+  auto buffered_footprints = footprints;
+  VectorOps->buffer_polygons(buffered_footprints);
 
-
-  // TODO: handle multiple PC in this cropper
+  // Crop all pointclouds
   std::map<std::string, std::vector<roofer::PointCollection>> point_clouds;
   for (auto& ipc : input_pointclouds) {
     std::cout << ipc.name << std::endl;
@@ -108,14 +122,50 @@ int main(int argc, const char * argv[]) {
     std::cout << ipc.quality << std::endl;
     PointCloudCropper->process(
       ipc.path,
-      polygons,
-      polygons,
-      point_clouds[ipc.name]
+      footprints,
+      buffered_footprints,
+      ipc.building_clouds
     );
   }
 
+  // compute nodata maxcircle
+  // compute rasters
+  for (auto& ipc : input_pointclouds) {
+    unsigned N = ipc.building_clouds.size();
+    ipc.nodata_radii.resize(N);
+    ipc.building_rasters.resize(N);
+    for(unsigned i=0; i<N; ++i) {
+      roofer::compute_nodata_circle(
+        ipc.building_clouds[i],
+        footprints[i],
+        &ipc.nodata_radii[i]
+      );
+      roofer::RasterisePointcloud(
+        ipc.building_clouds[i],
+        footprints[i],
+        ipc.building_rasters[i]
+      );
+    }
+  }
 
-  // TODO: PC selection algo
-
+  
   // TODO: write out geoflow config + pointcloud / fp for each building
+  // TODO: PC selection algo
+  for (auto& ipc : input_pointclouds) {
+    for (unsigned i=0; i<ipc.building_clouds.size(); ++i) {
+      
+      
+      LASWriter->write_pointcloud(
+        ipc.building_clouds[i],
+        "fmt/out/x.las",
+      );
+      // all rasters
+      // qualities
+      // name?
+      // pc_select();
+    }
+  }
+
+
+
 }

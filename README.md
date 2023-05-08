@@ -18,6 +18,14 @@ Automatic 3D building reconstruction
 * easy to adapt and extend (to support and encourage the exploration of new reconstruction algorithms)
 * simple to use, both API and app
 
+* bindings
+* CI
+* 
+
+## pitfalls to avoid
+* complexity
+* unbreakable links / dependencies
+
 ## CLI 
 
 ```

@@ -18,3 +18,9 @@ name = "KAD2020"
 date = "2020"
 quality = 2
 path = 'z'
+
+[parameters]
+cellsize = 0.5
+
+[output]
+path = '/output'

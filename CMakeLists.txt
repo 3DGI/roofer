@@ -12,6 +12,8 @@ set_target_properties(
 #spdlog
 add_subdirectory(external/spdlog)
 
+find_package(GEOS CONFIG REQUIRED)
+
 find_package(laslib CONFIG REQUIRED)
 # find_package(Eigen3 CONFIG REQUIRED)
 # add_definitions(-DCGAL_EIGEN3_ENABLED)
@@ -38,9 +40,13 @@ add_library(rooferlib
   src/projHelper.cpp
   src/io/VectorReaderOGR.cpp
   src/io/StreamCropper.cpp
+  src/io/LASWriter.cpp
   src/geometry/Raster.cpp
   src/pip_util.cpp
   src/geometry/ShapeDetector.cpp
+  src/geometry/Vector2DOpsGEOS.cpp
+  src/geometry/NodataCircleComputer.cpp
+  src/geometry/PointcloudRasteriser.cpp
 )
 set_target_properties(
   rooferlib PROPERTIES 
@@ -57,6 +63,8 @@ target_link_libraries( rooferlib PRIVATE
   ptinpoly
   CGAL::CGAL CGAL::CGAL_Core #Eigen3::Eigen
   LASlib
+  spdlog::spdlog
+  GEOS::geos_c
 )
 
 add_subdirectory(apps)
