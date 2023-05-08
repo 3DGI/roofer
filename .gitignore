@@ -1,0 +1,7 @@
+# Build dirs
+cmake-build-debug
+cmake-build-debug-clang
+
+# IDE
+.idea
+.run
