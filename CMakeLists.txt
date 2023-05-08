@@ -47,6 +47,7 @@ add_library(rooferlib
   src/geometry/Vector2DOpsGEOS.cpp
   src/geometry/NodataCircleComputer.cpp
   src/geometry/PointcloudRasteriser.cpp
+  src/quality/select_pointcloud.cpp
 )
 set_target_properties(
   rooferlib PROPERTIES 

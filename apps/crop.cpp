@@ -6,6 +6,7 @@
 #include "geometry/Vector2DOps.hpp"
 #include "geometry/NodataCircleComputer.hpp"
 #include "geometry/PointcloudRasteriser.hpp"
+#include "quality/select_pointcloud.hpp"
 
 #include "external/argh.h"
 #include "external/toml.hpp"
@@ -31,6 +32,7 @@ struct InputPointcloud {
   std::string path;
   std::string name;
   int quality;
+  int date;
   roofer::vec1f nodata_radii;
   std::vector<roofer::PointCollection> building_clouds;
   std::vector<roofer::PointCloudImageBundle> building_rasters;
@@ -151,20 +153,38 @@ int main(int argc, const char * argv[]) {
   
   // TODO: write out geoflow config + pointcloud / fp for each building
   // TODO: PC selection algo
-  for (auto& ipc : input_pointclouds) {
-    for (unsigned i=0; i<ipc.building_clouds.size(); ++i) {
-      
-      
-      LASWriter->write_pointcloud(
-        ipc.building_clouds[i],
-        "fmt/out/x.las",
+  
+  for (unsigned i=0; i<footprints.size(); ++i) {
+    
+    std::vector<roofer::CandidatePointcloud> candidates;
+    for (auto& ipc : input_pointclouds) {
+      candidates.push_back(
+        {
+          footprints[i].signed_area(),
+          ipc.nodata_radii[i],
+          ipc.building_rasters[i],
+          ipc.quality,
+          ipc.date
+        }
       );
-      // all rasters
-      // qualities
-      // name?
-      // pc_select();
     }
+
+    int selection;
+    roofer::PointcloudSelectExplanation explanation;
+    roofer::select_pointcloud(
+      candidates,
+      selection,
+      explanation
+    );
+    
+    LASWriter->write_pointcloud(
+      input_pointclouds[selection].building_clouds[i],
+      "fmt/out/x.las"
+    );
+
+    // write config
   }
+
 
 
 
