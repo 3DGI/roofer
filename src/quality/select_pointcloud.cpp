@@ -9,6 +9,9 @@ namespace roofer {
   void selectPointCloud(std::vector<CandidatePointCloud> candidates,
                         int& selection,
                         PointCloudSelectExplanation& explanation) {
+    // Thresholds determined from AHN3 Leiden
+    float threshold_nodata = 6.0;
+    float threshold_maxcircle = 4.7;
     CandidatePointCloud candidate_selected{};
     auto candidates_quality = candidates;
     auto candidates_date = candidates;
@@ -23,26 +26,26 @@ namespace roofer {
     // each candidate
     if (latest.yoc >= latest.date) {
       explanation = PointCloudSelectExplanation::TOO_OLD;
-      // FIXME: we are returning an uninitialized 'selection'
       return;
     }
-    for (const auto& candidate : candidates_quality) {
-      if (roofer::hasEnoughPointCoverage(candidate, 0.0, 0.0)) {
-        candidate_selected = candidate;
+    unsigned candidates_quality_idx(0);
+    for (unsigned i = 0; i < candidates_quality.size(); ++i) {
+      if (roofer::hasEnoughPointCoverage(
+              candidates_quality[i], threshold_nodata, threshold_maxcircle)) {
+        candidate_selected = candidates_quality[i];
+        candidates_quality_idx = i;
         break;
       }
     }
-    // TODO: What's a better way to check if 'selected' has been set?
     if (candidate_selected.yoc == 0) {
       explanation = PointCloudSelectExplanation::LOW_COVERAGE;
-      // FIXME: we are returning an uninitialized 'selection'
       return;
     }
     if (candidate_selected.name == latest.name) {
       explanation = PointCloudSelectExplanation::BEST_SUITABLE_QUALITY;
-      // TODO: return candidate_selected
     } else {
-      if (roofer::hasEnoughPointCoverage(latest, 0.0, 0.0)) {
+      if (roofer::hasEnoughPointCoverage(latest, threshold_nodata,
+                                         threshold_maxcircle)) {
         if (roofer::areDifferent(candidate_selected, latest)) {
           // If the two point clouds are different, that means
           // that the object has changed and the selected point
@@ -51,26 +54,28 @@ namespace roofer {
           // quality.
           explanation = PointCloudSelectExplanation::MOST_RECENT;
           candidate_selected = latest;
-        } else {
-          // They are not different, so keep the initially selected
-          // higher-quality point cloud.
-          explanation = PointCloudSelectExplanation::BEST_SUITABLE_QUALITY;
-          // TODO: return candidate_selected
         }
+        // They are not different, so keep the initially selected
+        // higher-quality point cloud.
       } else {
-        explanation = PointCloudSelectExplanation::LATEST_INSUFFICIENT;
-        candidate_selected = CandidatePointCloud();
-      }
-    }
-    // TODO: What's a better way to check if 'selected' has been set?
-    if (candidate_selected.yoc == 0) {
-      // We got here, because the "latest" does not have enough point coverage.
-      // So we check if the selected is new enough.
-    } else {
-      if (candidate_selected.yoc >= candidate_selected.date) {
-        // Selected point cloud was too old
-        explanation = PointCloudSelectExplanation::TOO_OLD;
-        candidate_selected = CandidatePointCloud();
+        // In this case, the latest point cloud is not even suitable for change,
+        // because it is missing most of its points. So we need to rely on the
+        // year of construction of the object to check if we can use the point
+        // cloud.
+        if (candidate_selected.yoc >= candidate_selected.date) {
+          // Selected point cloud was too old
+          explanation = PointCloudSelectExplanation::LATEST_INSUFFICIENT;
+          candidate_selected = CandidatePointCloud();
+          for (unsigned i = candidates_quality_idx;
+               i < candidates_quality.size(); ++i) {
+            auto candidate = candidates_quality[i];
+            if (candidate.yoc < candidate.date) {
+              explanation = PointCloudSelectExplanation::BEST_SUITABLE_QUALITY;
+              candidate_selected = candidate;
+              break;
+            }
+          }
+        }
       }
     }
 

@@ -171,7 +171,6 @@ int main(int argc, const char * argv[]) {
 
   
   // write out geoflow config + pointcloud / fp for each building
-  // TODO: PC selection algo
   spdlog::info("Selecting and writing pointclouds");
   for (unsigned i=0; i<footprints.size(); ++i) {
     
@@ -191,9 +190,13 @@ int main(int argc, const char * argv[]) {
       );
     }
 
-    int selection;
+    int selection(-1);
     roofer::PointCloudSelectExplanation explanation;
     roofer::selectPointCloud(candidates, selection, explanation);
+    if (selection == -1) {
+      spdlog::info("Did not find suitable point cloud for footprint idx: {}. Skipping configuration", i);
+      continue ;
+    }
     auto ipc_name = input_pointclouds[selection].name;
     auto ipc_date = input_pointclouds[selection].date;
     std::string pc_path = fmt::format(building_las_file_spec, fmt::arg("bid", i), fmt::arg("pc_name", ipc_name));
