@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <numeric>
 
 namespace roofer {
 
@@ -102,8 +103,69 @@ namespace roofer {
 
   bool areDifferent(const CandidatePointCloud& a,
                     const CandidatePointCloud& b) {
-    // TODO
-    return true;
+    auto footprint_mask =
+        computeMask(a.image_bundle.fp.array, a.image_bundle.fp.nodataval);
+    auto data_mask_a =
+        computeMask(a.image_bundle.max.array, a.image_bundle.max.nodataval);
+    auto data_mask_b =
+        computeMask(b.image_bundle.max.array, b.image_bundle.max.nodataval);
+
+    std::vector<bool> all_mask;
+    all_mask.resize(footprint_mask.size());
+    std::transform(data_mask_a.begin(), data_mask_a.end(), data_mask_b.begin(),
+                   all_mask.begin(), std::multiplies<>());
+    std::transform(all_mask.begin(), all_mask.end(), footprint_mask.begin(),
+                   all_mask.begin(), std::multiplies<>());
+
+    std::vector<float> all_mask_on_a;
+    all_mask_on_a.resize(all_mask.size());
+    std::transform(a.image_bundle.max.array.begin(),
+                   a.image_bundle.max.array.end(), all_mask.begin(),
+                   all_mask_on_a.begin(), std::multiplies<>());
+    std::vector<float> all_mask_on_b;
+    all_mask_on_b.resize(all_mask.size());
+    std::transform(b.image_bundle.max.array.begin(),
+                   b.image_bundle.max.array.end(), all_mask.begin(),
+                   all_mask_on_b.begin(), std::multiplies<>());
+
+    // The cells are marked 'true' when there is a change between the two
+    // point clouds.
+    std::vector<bool> change_mask;
+    change_mask.resize(all_mask_on_a.size());
+    std::transform(all_mask_on_a.begin(), all_mask_on_a.end(),
+                   all_mask_on_b.begin(), change_mask.begin(), isChange);
+
+    float footprint_pixel_cnt =
+        std::reduce(footprint_mask.begin(), footprint_mask.end());
+    float change_pixel_cnt =
+        std::reduce(change_mask.begin(), change_mask.end());
+
+    // The >=50% change was determined by analyzing the data.
+    // See the Leiden, percent_diff_AHN3_2020 plot.
+    float threshold = 0.5;
+
+    return (change_pixel_cnt / footprint_pixel_cnt) >= threshold;
+  }
+
+  std::vector<bool> computeMask(const std::vector<float>& image_array,
+                                const float& nodataval) {
+    std::vector<bool> mask;
+    mask.reserve(image_array.size());
+    for (const auto& cell : image_array) {
+      if (cell == nodataval) {
+        mask.push_back(false);
+      } else {
+        mask.push_back(true);
+      }
+    }
+    return mask;
+  }
+
+  bool isChange(float a, float b) {
+    // The threshold is 1.2 meters, because the accuracy of the Kadaster's
+    // Dense Image Matching point cloud is about 30cm, so we are at 4 sigma.
+    float threshold = 1.2;
+    return std::abs(b - a) > threshold;
   }
 
   size_t countNoData(const Image& img) {

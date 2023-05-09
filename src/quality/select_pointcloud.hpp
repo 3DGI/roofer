@@ -49,14 +49,23 @@ namespace roofer {
                               float threshold_nodata,
                               float threshold_maxcircle);
 
-  // Determine if the two point clouds describe the same object.
-  bool areDifferent(const CandidatePointCloud& a, const CandidatePointCloud& b);
-
   // Count the pixels that are NoData in the Image.
   size_t countNoData(const Image& img);
 
   float computeNoDataFraction(const CandidatePointCloud& pc);
 
   float computeNoDataMaxCircleFraction(const CandidatePointCloud& pc);
+
+  // Determine if the two point clouds describe the same object.
+  bool areDifferent(const CandidatePointCloud& a, const CandidatePointCloud& b);
+
+  // Compute a boolean mask that indicates that the cell has data.
+  std::vector<bool> computeMask(const std::vector<float>& image_array,
+                                const float& nodataval);
+
+  // Is cell B significantly different than cell A?
+  // Compares the two cell values to determine if there is a change in the
+  // point cloud.
+  bool isChange(float a, float b);
 
 }  // namespace roofer
