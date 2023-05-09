@@ -11,21 +11,23 @@
 #include "external/argh.h"
 #include "external/toml.hpp"
 
+#include <fmt/format.h>
 #include "spdlog/spdlog.h"
 
 #include <iostream>
+#include <fstream>
 #include <filesystem>
 namespace fs = std::filesystem;
 
 void print_help(std::string program_name) {
   // see http://docopt.org/
-  std::cout << "Usage: \n";
-  std::cout << "   " << program_name;
-  std::cout << " [-c <file>]\n";
+  fmt::print("Usage:\n");
+  fmt::print("   {}", program_name);
+  fmt::print(" [-c <file>]\n");
   // std::cout << "\n";
-  std::cout << "Options:\n";
+  fmt::print("Options:\n");
   // std::cout << "   -v, --version                Print version information\n";
-  std::cout << "   -c <file>, --config <file>   Config file\n";
+  fmt::print("   -c <file>, --config <file>   Config file\n");
 }
 
 struct InputPointcloud {
@@ -36,6 +38,7 @@ struct InputPointcloud {
   roofer::vec1f nodata_radii;
   std::vector<roofer::PointCollection> building_clouds;
   std::vector<roofer::PointCloudImageBundle> building_rasters;
+  roofer::vec1f ground_elevations;
 };
 
 int main(int argc, const char * argv[]) {
@@ -55,27 +58,27 @@ int main(int argc, const char * argv[]) {
   // TOML config parsing
   // pointclouds, footprints
   std::string config_path;
+  std::string building_toml_file_spec;
+  std::string building_las_file_spec;
+  std::string building_raster_file_spec;
+  toml::table config;
   if (cmdl({"-c", "--config"}) >> config_path) {
     if (!fs::exists(config_path)) {
-      std::cerr << "ERROR: no such config file: " << config_path << "\n";
+      spdlog::error("No such config file: {}", config_path);
       print_help(program_name);
       return EXIT_FAILURE;
     }
-    std::cout << "Reading configuration from file " << config_path << std::endl;
-    toml::table config;
+    spdlog::info("Reading configuration from file {}", config_path);
     try {
       config = toml::parse_file( config_path );
     } catch (const std::exception& e) {
-      std::cerr << "ERROR: unable to parse config file " << config_path << "\n";
-      std::cerr << "  " << e.what() << std::endl;
+      spdlog::error("Unable to parse config file {}.\n{}", config_path, e.what());
       return EXIT_FAILURE;
     }
 
     auto tml_path_footprint = config["input"]["footprint"]["path"].value<std::string>();
     if(tml_path_footprint.has_value())
       path_footprint = *tml_path_footprint;
-
-    std::cout << path_footprint << std::endl;
 
     auto tml_pointclouds = config["input"]["pointclouds"];
     if (toml::array* arr = tml_pointclouds.as_array())
@@ -88,6 +91,7 @@ int main(int argc, const char * argv[]) {
         
         pc.name = *(*tb)["name"].value<std::string>();
         pc.quality = *(*tb)["quality"].value<int>();
+        pc.date = *(*tb)["date"].value<int>();
 
         auto tml_path = (*tb)["path"].value<std::string>();
         if (tml_path.has_value()) {
@@ -97,8 +101,21 @@ int main(int argc, const char * argv[]) {
         input_pointclouds.push_back( pc );
       };
     }
+
+    auto building_toml_file_spec_ = config["output"]["building_toml_file"].value<std::string>();
+    if(building_toml_file_spec_.has_value())
+      building_toml_file_spec = *building_toml_file_spec_;
+
+    auto building_las_file_spec_ = config["output"]["building_las_file"].value<std::string>();
+    if(building_las_file_spec_.has_value())
+      building_las_file_spec = *building_las_file_spec_;
+
+    auto building_raster_file_spec_ = config["output"]["building_raster_file"].value<std::string>();
+    if(building_raster_file_spec_.has_value())
+      building_raster_file_spec = *building_raster_file_spec_;
+
   } else {
-    std::cerr << "ERROR: no config file specified\n";
+    spdlog::error("No config file specified\n");
     return EXIT_FAILURE;
   }
 
@@ -109,9 +126,11 @@ int main(int argc, const char * argv[]) {
   auto LASWriter = roofer::createLASWriter(*pj);
 
   VectorReader->open(path_footprint);
+  spdlog::info("Reading footprints from {}", path_footprint);
   auto footprints = VectorReader->readPolygons();
 
   // simplify + buffer footprints
+  spdlog::info("Simplifying and buffering footprints...");
   VectorOps->simplify_polygons(footprints);
   auto buffered_footprints = footprints;
   VectorOps->buffer_polygons(buffered_footprints);
@@ -119,20 +138,20 @@ int main(int argc, const char * argv[]) {
   // Crop all pointclouds
   std::map<std::string, std::vector<roofer::PointCollection>> point_clouds;
   for (auto& ipc : input_pointclouds) {
-    std::cout << ipc.name << std::endl;
-    std::cout << ipc.path << std::endl;
-    std::cout << ipc.quality << std::endl;
+    spdlog::info("Cropping pointcloud {}...", ipc.name);
     PointCloudCropper->process(
       ipc.path,
       footprints,
       buffered_footprints,
-      ipc.building_clouds
+      ipc.building_clouds,
+      ipc.ground_elevations
     );
   }
 
   // compute nodata maxcircle
   // compute rasters
   for (auto& ipc : input_pointclouds) {
+    spdlog::info("Analysing pointcloud {}...", ipc.name);
     unsigned N = ipc.building_clouds.size();
     ipc.nodata_radii.resize(N);
     ipc.building_rasters.resize(N);
@@ -151,8 +170,9 @@ int main(int argc, const char * argv[]) {
   }
 
   
-  // TODO: write out geoflow config + pointcloud / fp for each building
-  
+  // write out geoflow config + pointcloud / fp for each building
+  // TODO: PC selection algo
+  spdlog::info("Selecting and writing pointclouds");
   for (unsigned i=0; i<footprints.size(); ++i) {
     
     std::vector<roofer::CandidatePointCloud> candidates;
@@ -174,16 +194,42 @@ int main(int argc, const char * argv[]) {
     int selection;
     roofer::PointCloudSelectExplanation explanation;
     roofer::selectPointCloud(candidates, selection, explanation);
+    auto ipc_name = input_pointclouds[selection].name;
+    auto ipc_date = input_pointclouds[selection].date;
+    std::string pc_path = fmt::format(building_las_file_spec, fmt::arg("bid", i), fmt::arg("pc_name", ipc_name));
+    std::string config_path = fmt::format(building_toml_file_spec, fmt::arg("bid", i), fmt::arg("pc_name", ipc_name));
+    std::string raster_path = fmt::format(building_raster_file_spec, fmt::arg("bid", i), fmt::arg("pc_name", ipc_name));
     
     LASWriter->write_pointcloud(
       input_pointclouds[selection].building_clouds[i],
-      "fmt/out/x.las"
+      pc_path
     );
 
+    auto gf_config = toml::table {
+      {"INPUT_FOOTPRINT", pc_path},
+      {"INPUT_POINTCLOUD", config_path},
+      {"BID", i},
+      {"GROUND_ELEVATION", input_pointclouds[selection].ground_elevations[i]},
+      {"TILE_ID", "0"},
+
+      {"GF_PROCESS_OFFSET_OVERRIDE", true},
+      {"GF_PROCESS_OFFSET_X", (*pj->data_offset)[0]},
+      {"GF_PROCESS_OFFSET_Y", (*pj->data_offset)[1]},
+      {"GF_PROCESS_OFFSET_Z", (*pj->data_offset)[2]},
+
+      {"U_SOURCE", ipc_name},
+      {"U_SURVEY_DATE", ipc_date},
+    };
+    auto tbl_gfparams = config["output"]["reconstruction_parameters"].as_table();
+    gf_config.insert(tbl_gfparams->begin(), tbl_gfparams->end());
+
+    // fs::create_directories(fs::path(fname).parent_path());
+
+    std::ofstream ofs;
+    ofs.open(config_path);
+    ofs << gf_config;
+    ofs.close();
     // write config
   }
-
-
-
 
 }

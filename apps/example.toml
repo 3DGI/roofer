@@ -1,26 +1,52 @@
 [input.footprint]
-path = '/home/ravi/git/gfc-building-reconstruction/test-data/wippolder.gpkg'
+path = '/mnt/Data/LocalData/Kadaster/true_ortho_experimenten/4566/4566.gpkg'
+bid = ""
 
 [[input.pointclouds]]
 name = "AHN3"
-date = "2014"
+date = 2014
 quality = 1
-path = '/home/ravi/git/gfc-building-reconstruction/test-data/wippolder.las'
+path = '/mnt/Data/LocalData/Kadaster/true_ortho_experimenten/4566/merged_AHN3.las'
 
-[[input.pointclouds]]
-name = "AHN4"
-date = "2020"
-quality = 0
-path = 'u'
+# [[input.pointclouds]]
+# name = "AHN4"
+# date = 2020
+# quality = 0
+# path = 'u'
 
 [[input.pointclouds]]
 name = "KAD2020"
-date = "2020"
+date = 2020
 quality = 2
-path = 'z'
+path = '/mnt/Data/LocalData/Kadaster/true_ortho_experimenten/2021_Eindhoven/LAZ/DSM_1500_4142.laz'
 
 [parameters]
 cellsize = 0.5
 
 [output]
-path = '/output'
+# {bid} will be replaced by building identifier
+# {pc_name} will be replaced by input pointcloud name
+building_toml_file = '/output/KAD_eindhoven/{bid}/config.toml'
+building_las_file = '/output/KAD_eindhoven/{bid}/{bid}.las'
+building_raster_file = '/output/KAD_eindhoven/{bid}/{bid}.tif'
+
+# these get passed through to the geoflow config files that are generated for each building
+[output.reconstruction_parameters]
+DATASET_TITLE="Wippolder"
+OUTPUT_DIR="/output"
+
+GF_PROCESS_CRS="EPSG:7415"
+OUTPUT_CRS="EPSG:7415"
+
+line_detect__epsilon=1.000000
+lod13__step_height=3.000000
+optimisation_data_term=8.000000
+plane_detect__k=15
+plane_detect__epsilon=0.300000
+plane_detect__min_points=15
+plane_detect__normal_angle=0.750000
+thres_alpha=0.250000
+thres_reg_line_dist=0.800000
+thres_reg_line_ext=3.000000
+clip_ground=false
+lod1_extrude_to_max=true

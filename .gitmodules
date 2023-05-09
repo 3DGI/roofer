@@ -4,3 +4,6 @@
 [submodule "apps/external/polyscope"]
 	path = apps/external/polyscope
 	url = https://github.com/nmwsharp/polyscope.git
+[submodule "external/fmt"]
+	path = external/fmt
+	url = https://github.com/fmtlib/fmt.git

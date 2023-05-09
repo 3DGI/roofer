@@ -103,11 +103,13 @@ int main(int argc, const char * argv[]) {
   VectorReader->open(vector_file);
   auto polygons = VectorReader->readPolygons();
 
+  roofer::vec1f ground_elevations;
   PointCloudCropper->process(
     las_source,
     polygons,
     polygons,
-    point_clouds
+    point_clouds,
+    ground_elevations
   );
 
   for (auto& pc : point_clouds) {

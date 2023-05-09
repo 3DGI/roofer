@@ -3,6 +3,7 @@
 #include <lasreader.hpp>
 #include "../pip_util.hpp"
 #include "../geometry/Raster.hpp"
+#include "spdlog/spdlog.h"
 
 #include <filesystem>
 namespace fs = std::filesystem;
@@ -241,7 +242,7 @@ class PointsInPolygonsCollector  {
     }
 
     // Compute average elevation per polygon
-    std::cout <<"Computing the average ground elevation per polygon..." << std::endl;
+    // std::cout <<"Computing the average ground elevation per polygon..." << std::endl;
     for (size_t i=0; i<z_ground.size(); ++i) {
       float ground_ele = min_ground_elevation;
       if (z_ground[i].size()!=0) {
@@ -251,7 +252,7 @@ class PointsInPolygonsCollector  {
         int elevation_id = std::floor(ground_percentile*float(z_ground[i].size()-1));
         ground_ele = z_ground[i][elevation_id];
       } else {
-        std::cout << "no ground pts found for polygon\n";
+        // spdlog::info("no ground pts found for polygon");
       }
       // Assign the median ground elevation to each polygon
       ground_elevations.push_back(ground_ele);
@@ -270,8 +271,8 @@ class PointsInPolygonsCollector  {
       diff_sum += std::pow(mean_density - (info.pt_count_bld / info.area), 2);
     }
     float std_dev_density = std::sqrt(diff_sum / poly_info.size());
-    std::cout << "Mean point density = " << mean_density << std::endl;
-    std::cout << "\t standard deviation = " << std_dev_density << std::endl;
+    spdlog::info("Mean point density = {}", mean_density);
+    spdlog::info("Standard deviation = {}", std_dev_density);
 
     float cov_thres = mean_density - coverage_threshold * std_dev_density;
     for (size_t poly_i=0; poly_i < polygons.size(); ++poly_i) {
@@ -350,9 +351,10 @@ struct PointCloudCropper : public PointCloudCropperInterface {
     std::string source,
     std::vector<LinearRing>& polygons,
     std::vector<LinearRing>& buf_polygons,
-    std::vector<PointCollection>& point_clouds
+    std::vector<PointCollection>& point_clouds,
+    vec1f& ground_elevations
   ) {
-    vec1f ground_elevations;
+    // vec1f ground_elevations;
     vec1f poly_areas;
     vec1i poly_pt_counts_bld;
     vec1i poly_pt_counts_grd;
@@ -434,11 +436,11 @@ struct PointCloudCropper : public PointCloudCropperInterface {
       const auto aoi_min = pjHelper.coord_transform_rev(pip_collector.completearea_bb.min());
       const auto aoi_max = pjHelper.coord_transform_rev(pip_collector.completearea_bb.max());
       pjHelper.clear_rev_crs_transform();
-      std::cout << lasreader->npoints << std::endl;
-      std::cout << lasreader->get_min_x() << " " << lasreader->get_min_y() << " " << lasreader->get_min_z() << std::endl;
-      std::cout << aoi_min[0] << " " << aoi_min[1] << " " << aoi_min[2] << std::endl;
-      std::cout << lasreader->get_max_x() << " " << lasreader->get_max_y() << " " << lasreader->get_max_z() << std::endl;
-      std::cout << aoi_max[0] << " " << aoi_max[1] << " " << aoi_max[2] << std::endl;
+      // std::cout << lasreader->npoints << std::endl;
+      // std::cout << lasreader->get_min_x() << " " << lasreader->get_min_y() << " " << lasreader->get_min_z() << std::endl;
+      // std::cout << aoi_min[0] << " " << aoi_min[1] << " " << aoi_min[2] << std::endl;
+      // std::cout << lasreader->get_max_x() << " " << lasreader->get_max_y() << " " << lasreader->get_max_z() << std::endl;
+      // std::cout << aoi_max[0] << " " << aoi_max[1] << " " << aoi_max[2] << std::endl;
       lasreader->inside_rectangle(
         aoi_min[0], 
         aoi_min[1], 
