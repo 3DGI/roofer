@@ -11,7 +11,7 @@
 #include "external/argh.h"
 #include "external/toml.hpp"
 
-#include <fmt/format.h>
+#include "fmt/format.h"
 #include "spdlog/spdlog.h"
 
 #include <iostream>
