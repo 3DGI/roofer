@@ -11,6 +11,7 @@ set_target_properties(
 
 #spdlog
 add_subdirectory(external/fmt EXCLUDE_FROM_ALL)
+set(SPDLOG_FMT_EXTERNAL ON)
 add_subdirectory(external/spdlog)
 
 find_package(GEOS CONFIG REQUIRED)
@@ -59,15 +60,17 @@ target_include_directories(rooferlib PRIVATE
   src
   external/ptinpoly
 )
-target_link_libraries( rooferlib PRIVATE
-  PROJ::proj
-  GDAL::GDAL
-  ptinpoly
-  CGAL::CGAL CGAL::CGAL_Core #Eigen3::Eigen
-  LASlib
-  fmt::fmt
-  spdlog::spdlog
-  GEOS::geos_c
+target_link_libraries( rooferlib 
+  PRIVATE
+    PROJ::proj
+    GDAL::GDAL
+    ptinpoly
+    CGAL::CGAL CGAL::CGAL_Core #Eigen3::Eigen
+    LASlib
+    GEOS::geos_c
+  PUBLIC
+    fmt::fmt
+    spdlog::spdlog
 )
 
 add_subdirectory(apps)

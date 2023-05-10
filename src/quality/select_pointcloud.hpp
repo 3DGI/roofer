@@ -9,7 +9,7 @@ namespace roofer {
     int yoc;              // building year of construction
     PointCloudImageBundle image_bundle;
     std::string name;     // point cloud name
-    int quality;          // point cloud quality score
+    int quality;          // point cloud quality score. The lower the better the quality.
     int date;             // point cloud acquisition date
   };
 
@@ -28,44 +28,22 @@ namespace roofer {
     LATEST_INSUFFICIENT,
   };
 
+  struct selectPointCloudConfig {
+    // Thresholds determined from AHN3 Leiden
+    float threshold_nodata = 6.0;
+    float threshold_maxcircle = 4.7;
+    // The >=50% change was determined by analyzing the data.
+    // See the Leiden, percent_diff_AHN3_2020 plot.
+    float threshold_mutation_fraction = 0.5;
+    // The threshold is 1.2 meters, because the accuracy of the Kadaster's
+    // Dense Image Matching point cloud is about 30cm, so we are at 4 sigma.
+    // float threshold_mutation_difference = 1.2;
+    float threshold_mutation_difference = 1.2;
+  };
+
   void selectPointCloud(std::vector<CandidatePointCloud> candidates,
                         int& selection,
-                        PointCloudSelectExplanation& explanation);
-
-  bool compareByQuality(const CandidatePointCloud& a,
-                        const CandidatePointCloud& b);
-
-  bool compareByDate(const CandidatePointCloud& a,
-                     const CandidatePointCloud& b);
-
-  // Determine if the point cloud has enough point coverage for a good
-  // reconstruction. The point cloud has enough coverage if the indicators
-  // are below the given thresholds.
-  // The 'threshold_nodata' is fraction of the footprint [0.0-1.0] with nodata
-  // areas (pixels). The 'threshold_maxcircle' is the fraction of the footprint
-  // [0.0-1.0] covered by the maximum inscribed circle of the largest gap in the
-  // point cloud.
-  bool hasEnoughPointCoverage(const CandidatePointCloud& pc,
-                              float threshold_nodata,
-                              float threshold_maxcircle);
-
-  // Count the pixels that are NoData in the Image.
-  size_t countNoData(const Image& img);
-
-  float computeNoDataFraction(const CandidatePointCloud& pc);
-
-  float computeNoDataMaxCircleFraction(const CandidatePointCloud& pc);
-
-  // Determine if the two point clouds describe the same object.
-  bool areDifferent(const CandidatePointCloud& a, const CandidatePointCloud& b);
-
-  // Compute a boolean mask that indicates that the cell has data.
-  std::vector<bool> computeMask(const std::vector<float>& image_array,
-                                const float& nodataval);
-
-  // Is cell B significantly different than cell A?
-  // Compares the two cell values to determine if there is a change in the
-  // point cloud.
-  bool isChange(float a, float b);
+                        PointCloudSelectExplanation& explanation,
+                        const selectPointCloudConfig cfg = selectPointCloudConfig());
 
 }  // namespace roofer

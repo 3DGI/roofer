@@ -5,7 +5,7 @@ set_target_properties(
   crop PROPERTIES 
   CXX_STANDARD 17
 )
-target_link_libraries(crop PRIVATE rooferlib spdlog::spdlog fmt::fmt)
+target_link_libraries(crop PRIVATE rooferlib)
 
 
 # add polyscope

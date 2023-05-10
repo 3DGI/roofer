@@ -6,12 +6,44 @@
 
 namespace roofer {
 
+  bool compareByQuality(const CandidatePointCloud& a,
+                        const CandidatePointCloud& b);
+
+  bool compareByDate(const CandidatePointCloud& a,
+                     const CandidatePointCloud& b);
+
+  // Determine if the point cloud has enough point coverage for a good
+  // reconstruction. The point cloud has enough coverage if the indicators
+  // are below the given thresholds.
+  // The 'threshold_nodata' is fraction of the footprint [0.0-1.0] with nodata
+  // areas (pixels). The 'threshold_maxcircle' is the fraction of the footprint
+  // [0.0-1.0] covered by the maximum inscribed circle of the largest gap in the
+  // point cloud.
+  bool hasEnoughPointCoverage(const CandidatePointCloud& pc,
+                              float threshold_nodata,
+                              float threshold_maxcircle);
+
+  // Count the pixels that are NoData in the Image.
+  size_t countNoData(const Image& img);
+
+  float computeNoDataFraction(const CandidatePointCloud& pc);
+
+  float computeNoDataMaxCircleFraction(const CandidatePointCloud& pc);
+
+  // Determine if the two point clouds describe the same object.
+  bool areDifferent(const CandidatePointCloud& a, 
+                    const CandidatePointCloud& b, 
+                    const float& threshold_mutation_fraction,
+                    const float& threshold_mutation_difference);
+
+  // Compute a boolean mask that indicates that the cell has data.
+  std::vector<bool> computeMask(const std::vector<float>& image_array,
+                                const float& nodataval);
+
   void selectPointCloud(std::vector<CandidatePointCloud> candidates,
                         int& selection,
-                        PointCloudSelectExplanation& explanation) {
-    // Thresholds determined from AHN3 Leiden
-    float threshold_nodata = 6.0;
-    float threshold_maxcircle = 4.7;
+                        PointCloudSelectExplanation& explanation,
+                        const selectPointCloudConfig cfg) {
     CandidatePointCloud candidate_selected{};
     auto candidates_quality = candidates;
     auto candidates_date = candidates;
@@ -31,22 +63,22 @@ namespace roofer {
     unsigned candidates_quality_idx(0);
     for (unsigned i = 0; i < candidates_quality.size(); ++i) {
       if (roofer::hasEnoughPointCoverage(
-              candidates_quality[i], threshold_nodata, threshold_maxcircle)) {
+              candidates_quality[i], cfg.threshold_nodata, cfg.threshold_maxcircle)) {
         candidate_selected = candidates_quality[i];
         candidates_quality_idx = i;
         break;
       }
     }
-    if (candidate_selected.yoc == 0) {
+    if (candidate_selected == -1) {
       explanation = PointCloudSelectExplanation::LOW_COVERAGE;
       return;
     }
     if (candidate_selected.name == latest.name) {
       explanation = PointCloudSelectExplanation::BEST_SUITABLE_QUALITY;
     } else {
-      if (roofer::hasEnoughPointCoverage(latest, threshold_nodata,
-                                         threshold_maxcircle)) {
-        if (roofer::areDifferent(candidate_selected, latest)) {
+      if (roofer::hasEnoughPointCoverage(latest, cfg.threshold_nodata,
+                                         cfg.threshold_maxcircle)) {
+        if (roofer::areDifferent(candidate_selected, latest, cfg.threshold_mutation_fraction, cfg.threshold_mutation_difference)) {
           // If the two point clouds are different, that means
           // that the object has changed and the selected point
           // cloud is outdated, therefore, we have to use the
@@ -93,7 +125,7 @@ namespace roofer {
 
   bool compareByDate(const CandidatePointCloud& a,
                      const CandidatePointCloud& b) {
-    return a.date < b.date;
+    return a.date > b.date;
   }
 
   bool hasEnoughPointCoverage(const CandidatePointCloud& pc,
@@ -107,7 +139,9 @@ namespace roofer {
   }
 
   bool areDifferent(const CandidatePointCloud& a,
-                    const CandidatePointCloud& b) {
+                    const CandidatePointCloud& b,
+                    const float& threshold_mutation_fraction,
+                    const float& threshold_mutation_difference) {
     auto footprint_mask =
         computeMask(a.image_bundle.fp.array, a.image_bundle.fp.nodataval);
     auto data_mask_a =
@@ -138,18 +172,17 @@ namespace roofer {
     std::vector<bool> change_mask;
     change_mask.resize(all_mask_on_a.size());
     std::transform(all_mask_on_a.begin(), all_mask_on_a.end(),
-                   all_mask_on_b.begin(), change_mask.begin(), isChange);
+                   all_mask_on_b.begin(), change_mask.begin(), 
+                   [ threshold_mutation_difference ] (const float& a, const float& b) {
+                    return std::abs(b - a) > threshold_mutation_difference;
+                   });
 
     float footprint_pixel_cnt =
         std::reduce(footprint_mask.begin(), footprint_mask.end());
     float change_pixel_cnt =
         std::reduce(change_mask.begin(), change_mask.end());
 
-    // The >=50% change was determined by analyzing the data.
-    // See the Leiden, percent_diff_AHN3_2020 plot.
-    float threshold = 0.5;
-
-    return (change_pixel_cnt / footprint_pixel_cnt) >= threshold;
+    return (change_pixel_cnt / footprint_pixel_cnt) >= threshold_mutation_fraction;
   }
 
   std::vector<bool> computeMask(const std::vector<float>& image_array,
@@ -164,13 +197,6 @@ namespace roofer {
       }
     }
     return mask;
-  }
-
-  bool isChange(float a, float b) {
-    // The threshold is 1.2 meters, because the accuracy of the Kadaster's
-    // Dense Image Matching point cloud is about 30cm, so we are at 4 sigma.
-    float threshold = 1.2;
-    return std::abs(b - a) > threshold;
   }
 
   size_t countNoData(const Image& img) {
