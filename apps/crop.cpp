@@ -176,35 +176,37 @@ int main(int argc, const char * argv[]) {
     
     std::vector<roofer::CandidatePointCloud> candidates;
     candidates.reserve(input_pointclouds.size());
+    int j=0;
     for (auto& ipc : input_pointclouds) {
       candidates.push_back(
         roofer::CandidatePointCloud {
           footprints[i].signed_area(),
           ipc.nodata_radii[i],
-          0, // TODO: get footprint year of construction
+          // 0, // TODO: get footprint year of construction
           ipc.building_rasters[i],
           ipc.name,
           ipc.quality,
-          ipc.date
+          ipc.date,
+          j++
         }
       );
     }
 
-    int selection(-1);
     roofer::PointCloudSelectExplanation explanation;
-    roofer::selectPointCloud(candidates, selection, explanation);
-    if (selection == -1) {
+    auto selected = roofer::selectPointCloud(candidates, explanation);
+    if (!selected) {
       spdlog::info("Did not find suitable point cloud for footprint idx: {}. Skipping configuration", i);
       continue ;
     }
-    auto ipc_name = input_pointclouds[selection].name;
-    auto ipc_date = input_pointclouds[selection].date;
+    // TODO: Compare PC with year of construction of footprint if available
+    auto ipc_name = input_pointclouds[selected->index].name;
+    auto ipc_date = input_pointclouds[selected->index].date;
     std::string pc_path = fmt::format(building_las_file_spec, fmt::arg("bid", i), fmt::arg("pc_name", ipc_name));
     std::string config_path = fmt::format(building_toml_file_spec, fmt::arg("bid", i), fmt::arg("pc_name", ipc_name));
     std::string raster_path = fmt::format(building_raster_file_spec, fmt::arg("bid", i), fmt::arg("pc_name", ipc_name));
     
     LASWriter->write_pointcloud(
-      input_pointclouds[selection].building_clouds[i],
+      input_pointclouds[selected->index].building_clouds[i],
       pc_path
     );
 
@@ -212,7 +214,7 @@ int main(int argc, const char * argv[]) {
       {"INPUT_FOOTPRINT", pc_path},
       {"INPUT_POINTCLOUD", config_path},
       {"BID", i},
-      {"GROUND_ELEVATION", input_pointclouds[selection].ground_elevations[i]},
+      {"GROUND_ELEVATION", input_pointclouds[selected->index].ground_elevations[i]},
       {"TILE_ID", "0"},
 
       {"GF_PROCESS_OFFSET_OVERRIDE", true},

@@ -51,11 +51,11 @@ namespace roofer {
             r_fp.add_point(p[0], p[1], 0, RasterTools::MAX);
           }
           for (auto& hole : holes) {
-          if (GridTest(hole, pipoint)) {
-            r_fp.add_point(p[0], p[1], 1, RasterTools::MAX);
-          } else {
-            r_fp.add_point(p[0], p[1], 0, RasterTools::MAX);
-          }
+            if (GridTest(hole, pipoint)) {
+              r_fp.add_point(p[0], p[1], 1, RasterTools::MAX);
+            } else {
+              r_fp.add_point(p[0], p[1], 0, RasterTools::MAX);
+            }
           }
           delete pipoint;
         }

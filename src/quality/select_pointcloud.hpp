@@ -6,26 +6,17 @@ namespace roofer {
     float area;           // footprint area
     float nodata_radius;  // radius of the incribed circle in the largest gap
                           // in the point cloud
-    int yoc;              // building year of construction
-    PointCloudImageBundle image_bundle;
+    PointCloudImageBundle& image_bundle;
     std::string name;     // point cloud name
     int quality;          // point cloud quality score. The lower the better the quality.
     int date;             // point cloud acquisition date
+    int index;            // input point cloud index
   };
 
   enum PointCloudSelectExplanation {
-    // highest quality, latest available
-    BEST_SUITABLE_QUALITY,
-    // highest available quality is outdated, latest selected
-    MOST_RECENT,
-    // object was constructed in the same year or after the acquisition of the
-    // latest point cloud
-    TOO_OLD,
-    // none of the available point clouds have enough point coverage
-    LOW_COVERAGE,
-    // highest available quality is not the latest, latest has insufficient
-    // coverage
-    LATEST_INSUFFICIENT,
+    BEST_SUFFICIENT,
+    LATEST_SUFFICIENT,
+    BAD_COVERAGE
   };
 
   struct selectPointCloudConfig {
@@ -41,8 +32,13 @@ namespace roofer {
     float threshold_mutation_difference = 1.2;
   };
 
-  void selectPointCloud(std::vector<CandidatePointCloud> candidates,
-                        int& selection,
+
+  // return either 
+  // 1. latest, unless there is coverage issue (case AHN 3/4, both have good quality)
+  // 2. best quality, unless there is coverage issue (based on user quality rating, case Kadaster DIM/AHN)
+  // In both cases poor coverage candidates are eliminated
+  // Also considers mutations, ie. in case best quality candidate is mutated wrt latest latest is selected
+  const CandidatePointCloud* selectPointCloud(const std::vector<CandidatePointCloud>& candidates,
                         PointCloudSelectExplanation& explanation,
                         const selectPointCloudConfig cfg = selectPointCloudConfig());
 
