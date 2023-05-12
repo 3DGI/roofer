@@ -99,11 +99,7 @@ namespace roofer {
     if (best_suffcient == latest_suffcient) {
       explanation = PointCloudSelectExplanation::BEST_SUFFICIENT;
       return best_suffcient;
-    // check for mutations with more recent PC
-    // NB: algo below assumes there are only two candidates 
-    // (consider eg 3 candidates where the middle one has the recent mutation, and sufficient 
-    // coverage. And latest was disqualified due to poor coverage. It will not be picked with this algo).
-    // 
+    // check for mutations
     } else {
       // check if latest PC has enough coverage
       // if (roofer::hasEnoughPointCoverage(latest_suffcient, cfg.threshold_nodata,
