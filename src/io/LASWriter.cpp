@@ -51,9 +51,9 @@ namespace roofer {
 
       // bool found_offset = manager.data_offset.has_value();
 
-      auto classification = point_cloud.get_attribute_vec1i("classification");
-      auto intensity = point_cloud.get_attribute_vec1f("intensity");
-      auto colors = point_cloud.get_attribute_vec3f("colors");
+      auto classification = point_cloud.get_if<int>("classification");
+      auto intensity = point_cloud.get_if<float>("intensity");
+      auto colors = point_cloud.get_if<arr3f>("colors");
 
       // todo throw warnings
       if (classification) {

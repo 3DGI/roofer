@@ -12,7 +12,7 @@ namespace roofer {
 
     virtual void open(const std::string& source) = 0;
 
-    virtual std::vector<LinearRing> readPolygons() = 0;
+    virtual void readPolygons(std::vector<LinearRing>&, AttributeVecMap* attributes=nullptr) = 0;
   };
 
   std::unique_ptr<VectorReaderInterface> createVectorReaderOGR(projHelperInterface& pjh);

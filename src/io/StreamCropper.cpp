@@ -46,7 +46,7 @@ class PointsInPolygonsCollector  {
     ground_buffer_points.resize(polygons.size());
 
     for (size_t i=0; i< point_clouds.size(); ++i) {
-      point_clouds.at(i).add_attribute_vec1i("classification");
+      point_clouds.at(i).insert_vec<int>("classification");
     }
 
     // make a vector of BOX2D for the set of input polygons
@@ -122,7 +122,7 @@ class PointsInPolygonsCollector  {
     for(size_t& poly_i : pindex_vals[lincoord]) {
       if (GridTest(buf_poly_grids[poly_i], pipoint)) {
         auto& point_cloud = point_clouds.at(poly_i);
-        auto classification = point_cloud.get_attribute_vec1i("classification");
+        auto classification = point_cloud.get_if<int>("classification");
         
         if (point_class == ground_class) {
           min_ground_elevation = std::min(min_ground_elevation, point[2]);
@@ -145,7 +145,7 @@ class PointsInPolygonsCollector  {
     if (point_class == building_class) {
       if (poly_intersect.size() == 1) {
         auto& point_cloud = point_clouds.at(poly_intersect[0]);
-        auto classification = point_cloud.get_attribute_vec1i("classification");
+        auto classification = point_cloud.get_if<int>("classification");
         point_cloud.push_back(point);
         (*classification).push_back(6);
       } else if (poly_intersect.size() > 1) {
@@ -174,7 +174,7 @@ class PointsInPolygonsCollector  {
     for (size_t poly_i=0; poly_i < polygons.size(); poly_i++) {
       auto& polygon = polygons.at(poly_i);
       auto& point_cloud = point_clouds.at(poly_i);
-      auto classification = point_cloud.get_attribute_vec1i("classification");
+      auto classification = point_cloud.get_if<int>("classification");
       PolyInfo info;
       
       info.area = polygon.signed_area();
@@ -201,7 +201,7 @@ class PointsInPolygonsCollector  {
     // merge buffer ground points into regular point_clouds now that the proper counts have been established
     for (size_t poly_i; poly_i < polygons.size(); poly_i++) {
       auto& point_cloud = point_clouds.at(poly_i);
-      auto classification = point_cloud.get_attribute_vec1i("classification");
+      auto classification = point_cloud.get_if<int>("classification");
       for (auto& p : ground_buffer_points[poly_i]) {
         point_cloud.push_back(p);
         (*classification).push_back(2);
@@ -235,7 +235,7 @@ class PointsInPolygonsCollector  {
       
       // now the most suitable polygon (footprint) is the last in the list. We will assign this point to that footprint.
       auto& point_cloud = point_clouds.at( polylist.back() );
-      auto classification = point_cloud.get_attribute_vec1i("classification");
+      auto classification = point_cloud.get_if<int>("classification");
       point_cloud.push_back(*p);
       (*classification).push_back(6);
       poly_info[ polylist.back() ].pt_count_bld++;

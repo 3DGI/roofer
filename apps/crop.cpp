@@ -127,7 +127,8 @@ int main(int argc, const char * argv[]) {
 
   VectorReader->open(path_footprint);
   spdlog::info("Reading footprints from {}", path_footprint);
-  auto footprints = VectorReader->readPolygons();
+  std::vector<roofer::LinearRing> footprints;
+  VectorReader->readPolygons(footprints);
 
   // simplify + buffer footprints
   spdlog::info("Simplifying and buffering footprints...");

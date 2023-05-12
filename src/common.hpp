@@ -41,47 +41,50 @@ typedef std::vector<float> vec1f;
 typedef std::vector<size_t> vec1ui;
 typedef std::vector<std::string> vec1s;
 
+// modelled after https://gdal.org/api/ogrfeature_cpp.html#_CPPv4NK10OGRFeature18GetFieldAsDateTimeEiPiPiPiPiPiPiPi
+struct Date {
+  int year;
+  int month;
+  int day;
+};
+struct Time {
+  int hour;
+  int minute;
+  float second;
+  int timeZone;
+};
+struct DateTime {
+  Date date;
+  Time time;
+};
+
 // Attribute types
-typedef std::variant<bool, int, std:: string, float> attribute_value;
+typedef std::variant<bool, int, std::string, float> attribute_value;
 typedef std::unordered_map<std::string, std::vector<attribute_value>> AttributeMap;
 
-typedef std::variant<vec1b, vec1i, vec1s, vec1f, vec3f> attribute_vec;
+typedef std::variant<
+  vec1b, 
+  vec1i, 
+  vec1s, 
+  vec1f, 
+  vec3f, 
+  std::vector<Date>,
+  std::vector<Time>,
+  std::vector<DateTime>
+  > attribute_vec;
 typedef std::unordered_map<std::string, attribute_vec> attribute_vec_map;
 class AttributeVecMap
 {
   attribute_vec_map attribs_;
-  template<typename T> bool is_attribute_type(const std::string& name) const;
-  template<typename T> const T* get_attribute(const std::string& name) const;
-  template<typename T> T* get_attribute(const std::string& name);
-
   public:
+  template<typename T> bool holds_alternative(const std::string& name) const;
+  template<typename T> const std::vector<T>* get_if(const std::string& name) const;
+  template<typename T> std::vector<T>* get_if(const std::string& name);
+  template<typename T> std::vector<T>& insert_vec(const std::string& name);
+  
   attribute_vec_map& get_attributes();
   const attribute_vec_map& get_attributes() const;
   bool has_attributes() const;
-
-  bool is_attribute_vec1b(const std::string& name) const;
-  bool is_attribute_vec1i(const std::string& name) const;
-  bool is_attribute_vec1s(const std::string& name) const;
-  bool is_attribute_vec1f(const std::string& name) const;
-  bool is_attribute_vec3f(const std::string& name) const;
-
-  const vec1b* get_attribute_vec1b(const std::string& name) const;
-  const vec1i* get_attribute_vec1i(const std::string& name) const;
-  const vec1s* get_attribute_vec1s(const std::string& name) const;
-  const vec1f* get_attribute_vec1f(const std::string& name) const;
-  const vec3f* get_attribute_vec3f(const std::string& name) const;
-
-  vec1b* get_attribute_vec1b(const std::string& name);
-  vec1i* get_attribute_vec1i(const std::string& name);
-  vec1s* get_attribute_vec1s(const std::string& name);
-  vec1f* get_attribute_vec1f(const std::string& name);
-  vec3f* get_attribute_vec3f(const std::string& name);
-
-  vec1b& add_attribute_vec1b(const std::string& name);
-  vec1i& add_attribute_vec1i(const std::string& name);
-  vec1s& add_attribute_vec1s(const std::string& name);
-  vec1f& add_attribute_vec1f(const std::string& name);
-  vec3f& add_attribute_vec3f(const std::string& name);
 };
 
 class Box
@@ -274,23 +277,6 @@ class Mesh {
   const std::vector<int>& get_labels() const;
   // std::unordered_map<std::string, AttributeVec>&  get_attributes();
   // const std::unordered_map<std::string, AttributeVec>&  get_attributes() const;
-};
-
-// modelled after https://gdal.org/api/ogrfeature_cpp.html#_CPPv4NK10OGRFeature18GetFieldAsDateTimeEiPiPiPiPiPiPiPi
-struct Date {
-  int year;
-  int month;
-  int day;
-};
-struct Time {
-  int hour;
-  int minute;
-  float second;
-  int timeZone;
-};
-struct DateTime {
-  Date date;
-  Time time;
 };
 
 struct Image {

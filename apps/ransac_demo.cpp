@@ -101,7 +101,8 @@ int main(int argc, const char * argv[]) {
   std::string vector_file = "/mnt/Data/LocalData/Kadaster/true_ortho_experimenten/2021_Eindhoven/LAZ/DSM_1500_4142.gpkg";
   std::string las_source = "/mnt/Data/LocalData/Kadaster/true_ortho_experimenten/2021_Eindhoven/LAZ/DSM_1500_4142.laz";
   VectorReader->open(vector_file);
-  auto polygons = VectorReader->readPolygons();
+  std::vector<roofer::LinearRing> polygons;
+  VectorReader->readPolygons(polygons);
 
   roofer::vec1f ground_elevations;
   PointCloudCropper->process(

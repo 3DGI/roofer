@@ -30,51 +30,6 @@ namespace fs = std::filesystem;
 
 namespace roofer {
 
-// void OGRLoaderNode::push_attributes(const OGRFeature &poFeature, std::unordered_map<std::string,int>& fieldNameMap)
-// {
-//   for (auto &[name, mterm] : poly_output("attributes").sub_terminals())
-//   {
-//     if (mterm->accepts_type(typeid(bool)))
-//     {
-//       mterm->push_back(bool(poFeature.GetFieldAsInteger(name.c_str())));
-//     }
-//     else if (mterm->accepts_type(typeid(int)))
-//     {
-//       if(name == "OGR_FID") {
-//         mterm->push_back(int(poFeature.GetFID()));
-//       } else {
-//         mterm->push_back(int(poFeature.GetFieldAsInteger64(name.c_str())));
-//       }
-//     }
-//     else if (mterm->accepts_type(typeid(float)))
-//     {
-//       mterm->push_back(float(poFeature.GetFieldAsDouble(name.c_str())));
-//     }
-//     else if (mterm->accepts_type(typeid(std::string)))
-//     {
-//       mterm->push_back((std::string)poFeature.GetFieldAsString(name.c_str()));
-//     }
-//     else if (mterm->accepts_type(typeid(Date)))
-//     {
-//       DateTime t;
-//       poFeature.GetFieldAsDateTime(fieldNameMap[name], &t.date.year, &t.date.month, &t.date.day, nullptr, nullptr, &t.time.second, nullptr);
-//       mterm->push_back(t.date);
-//     }
-//     else if (mterm->accepts_type(typeid(Time)))
-//     {
-//       Time time;
-//       poFeature.GetFieldAsDateTime(fieldNameMap[name], nullptr, nullptr, nullptr, &time.hour, &time.minute, &time.second, &time.timeZone);
-//       mterm->push_back(time);
-//     }
-//     else if (mterm->accepts_type(typeid(DateTime)))
-//     {
-//       DateTime t;
-//       poFeature.GetFieldAsDateTime(fieldNameMap[name], &t.date.year, &t.date.month, &t.date.day, &t.time.hour, &t.time.minute, &t.time.second, &t.time.timeZone);
-//       mterm->push_back(t);
-//     }
-//   }
-// }
-
 class VectorReaderOGR : public VectorReaderInterface {
   GDALDatasetUniquePtr poDS;
 
@@ -84,6 +39,51 @@ class VectorReaderOGR : public VectorReaderInterface {
   std::string attribute_filter_ = "";
   float base_elevation = 0;
   bool output_fid_ = false;
+
+  void push_attributes(const OGRFeature &poFeature, AttributeVecMap* attributes, std::unordered_map<std::string,int>& field_name_map)
+  {
+    for (auto &[name, idx] : field_name_map)
+    {
+      if (auto attr = attributes->get_if<bool>(name))
+      {
+        attr->push_back(bool(poFeature.GetFieldAsInteger(name.c_str())));
+      }
+      else if (auto attr = attributes->get_if<int>(name))
+      {
+        if(name == "OGR_FID") {
+          attr->push_back(int(poFeature.GetFID()));
+        } else {
+          attr->push_back(int(poFeature.GetFieldAsInteger64(name.c_str())));
+        }
+      }
+      else if (auto attr = attributes->get_if<float>(name))
+      {
+        attr->push_back(float(poFeature.GetFieldAsDouble(name.c_str())));
+      }
+      else if (auto attr = attributes->get_if<std::string>(name))
+      {
+        attr->push_back((std::string)poFeature.GetFieldAsString(name.c_str()));
+      }
+      else if (auto attr = attributes->get_if<Date>(name))
+      {
+        DateTime t;
+        poFeature.GetFieldAsDateTime(field_name_map[name], &t.date.year, &t.date.month, &t.date.day, nullptr, nullptr, &t.time.second, nullptr);
+        attr->push_back(t.date);
+      }
+      else if (auto attr = attributes->get_if<Time>(name))
+      {
+        Time time;
+        poFeature.GetFieldAsDateTime(field_name_map[name], nullptr, nullptr, nullptr, &time.hour, &time.minute, &time.second, &time.timeZone);
+        attr->push_back(time);
+      }
+      else if (auto attr = attributes->get_if<DateTime>(name))
+      {
+        DateTime t;
+        poFeature.GetFieldAsDateTime(field_name_map[name], &t.date.year, &t.date.month, &t.date.day, &t.time.hour, &t.time.minute, &t.time.second, &t.time.timeZone);
+        attr->push_back(t);
+      }
+    }
+  }
 
   public:
   using VectorReaderInterface::VectorReaderInterface;
@@ -139,7 +139,7 @@ class VectorReaderOGR : public VectorReaderInterface {
     polygons.push_back(gf_polygon);
   }
 
-  std::vector<LinearRing> readPolygons()
+  void readPolygons(std::vector<LinearRing>& polygons, AttributeVecMap* attributes) override
   {
     layer_count = poDS->GetLayerCount();
     std::cout << "Layer count: " << layer_count << "\n";
@@ -170,58 +170,57 @@ class VectorReaderOGR : public VectorReaderInterface {
     // Set up vertex data (and buffer(s)) and attribute pointers
     // LineStringCollection line_strings;
     // LinearRingCollection linear_rings;
-    std::vector<LinearRing> polygons;
+    // std::vector<LinearRing> polygons;
     // auto &linear_rings = vector_output("linear_rings");
     // auto &line_strings = vector_output("line_strings");
     
     // auto &is_valid = vector_output("is_valid");
     // auto &area = vector_output("area");
 
-    std::unordered_map<std::string,int> fieldNameMap;
-    // for (size_t i = 0; i < field_count; ++i)
-    // {
-    //   auto field_def = layer_def->GetFieldDefn(i);
-    //   auto t = field_def->GetType();
-    //   auto field_name = (std::string)field_def->GetNameRef();
-    //   fieldNameMap[field_name] = i;
-    //   if ((t == OFTInteger) && (field_def->GetSubType() == OFSTBoolean)) 
-    //   {
-    //     auto &term = poly_output("attributes").add_vector(field_name, typeid(bool));
-    //   } 
-    //   else if (t == OFTInteger || t == OFTInteger64)
-    //   {
-    //     auto &term = poly_output("attributes").add_vector(field_name, typeid(int));
-    //     // term.set(vec1i());
-    //   }
-    //   else if (t == OFTString)
-    //   {
-    //     auto &term = poly_output("attributes").add_vector(field_name, typeid(std::string));
-    //     // term.set(vec1s());
-    //   }
-    //   else if (t == OFTReal)
-    //   {
-    //     auto &term = poly_output("attributes").add_vector(field_name, typeid(float));
-    //     // term.set(vec1f());
-    //   }
-    //   else if (t == OFTDate)
-    //   {
-    //     auto &term = poly_output("attributes").add_vector(field_name, typeid(Date));
-    //     // term.set(vec1f());
-    //   }
-    //   else if (t == OFTTime)
-    //   {
-    //     auto &term = poly_output("attributes").add_vector(field_name, typeid(Time));
-    //     // term.set(vec1f());
-    //   }
-    //   else if (t == OFTDateTime)
-    //   {
-    //     auto &term = poly_output("attributes").add_vector(field_name, typeid(DateTime));
-    //     // term.set(vec1f());
-    //   }
-    // }
+    std::unordered_map<std::string,int> field_name_map;
+    if(attributes) {
+      if(output_fid_) {
+        attributes->insert_vec<int>("OGR_FID");
+        field_name_map["OGR_FID"] = -1;
+      }  
+      for (size_t i = 0; i < field_count; ++i)
+      {
+        auto field_def = layer_def->GetFieldDefn(i);
+        auto t = field_def->GetType();
+        auto field_name = (std::string)field_def->GetNameRef();
+        field_name_map[field_name] = i;
+        if ((t == OFTInteger) && (field_def->GetSubType() == OFSTBoolean)) 
+        {
+          attributes->insert_vec<bool>(field_name);
+        } 
+        else if (t == OFTInteger || t == OFTInteger64)
+        {
+          attributes->insert_vec<int>(field_name);
+        }
+        else if (t == OFTString)
+        {
+          attributes->insert_vec<std::string>(field_name);
+        }
+        else if (t == OFTReal)
+        {
+          attributes->insert_vec<float>(field_name);
+        }
+        else if (t == OFTDate)
+        {
+          attributes->insert_vec<Date>(field_name);
+        }
+        else if (t == OFTTime)
+        {
+          attributes->insert_vec<Time>(field_name);
+        }
+        else if (t == OFTDateTime)
+        {
+          attributes->insert_vec<DateTime>(field_name);
+        }
+      }
+    }
 
-    // if(output_fid_)
-    //   auto &ogrfid_term = poly_output("attributes").add_vector("OGR_FID", typeid(int));
+
 
     poLayer->ResetReading();
 
@@ -244,13 +243,10 @@ class VectorReaderOGR : public VectorReaderInterface {
       }
     }
 
-    size_t fid{1};
     OGRFeature *poFeature;
     while( (poFeature = poLayer->GetNextFeature()) != NULL )
     // for (auto &poFeature : poLayer)
     {
-      // if(feature_select != 0 && fid++ != feature_select) continue;
-
       // read feature geometry
       OGRGeometry *poGeometry;
       poGeometry = poFeature->GetGeometryRef();
@@ -275,7 +271,7 @@ class VectorReaderOGR : public VectorReaderInterface {
         //   line_strings.push_back(line_string);
         //   is_valid.push_back(bool(poGeometry->IsValid()));
 
-        //   // push_attributes(*poFeature, fieldNameMap);
+        //   // push_attributes(*poFeature, field_name_map);
         // }
         // else 
         if (wkbFlatten(poGeometry->getGeometryType()) == wkbPolygon)
@@ -286,8 +282,7 @@ class VectorReaderOGR : public VectorReaderInterface {
           
           // area.push_back(float(poPolygon->get_Area()));
           // is_valid.push_back(bool(poPolygon->IsValid()));
-
-          // push_attributes(*poFeature, fieldNameMap);
+            if(attributes) push_attributes(*poFeature, attributes, field_name_map);
 
         } 
         else if ( wkbFlatten(poGeometry->getGeometryType()) == wkbMultiPolygon ) 
@@ -298,8 +293,7 @@ class VectorReaderOGR : public VectorReaderInterface {
           
             // area.push_back(float((*poly_it)->get_Area()));
             // is_valid.push_back(bool((*poly_it)->IsValid()));
-
-            // push_attributes(*poFeature, fieldNameMap);
+            if(attributes)   push_attributes(*poFeature, attributes, field_name_map);
           }
         } else {
           throw rooferException("Unsupported geometry type\n");
@@ -318,7 +312,6 @@ class VectorReaderOGR : public VectorReaderInterface {
     {
       std::cout << "pushed " << polygons.size() << " linear_ring features...\n";
     }
-    return polygons;
   }
 };
 
