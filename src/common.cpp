@@ -334,6 +334,13 @@ template std::vector<DateTime>& AttributeVecMap::insert_vec<DateTime>(const std:
 template std::vector<Date>& AttributeVecMap::insert_vec<Date>(const std::string& name);
 template std::vector<Time>& AttributeVecMap::insert_vec<Time>(const std::string& name);
 
+attribute_vec_map::const_iterator AttributeVecMap::begin() const {
+  return attribs_.begin();
+};
+attribute_vec_map::const_iterator AttributeVecMap::end() const {
+  return attribs_.end();
+};
+
 size_t TriangleCollection::vertex_count() const
 {
   return size() * 3;

@@ -154,14 +154,16 @@ namespace roofer {
     Point c_max;
     for(const auto& face : t.finite_face_handles()) {
       // get the voronoi node
-      auto c = t.dual(face);
-      // check it is inside footprint polygon
-      if(pip_tester.test(c)) {
-        for(size_t i=0; i<3; ++i) {
-          auto r = CGAL::squared_distance(c, face->vertex(i)->point());
-          if (r>r_max) {
-            r_max = r;
-            c_max = c;
+      if (!CGAL::collinear(face->vertex(0)->point(), face->vertex(1)->point(), face->vertex(2)->point())) {
+        auto c = t.dual(face);
+        // check it is inside footprint polygon
+        if(pip_tester.test(c)) {
+          for(size_t i=0; i<3; ++i) {
+            auto r = CGAL::squared_distance(c, face->vertex(i)->point());
+            if (r>r_max) {
+              r_max = r;
+              c_max = c;
+            }
           }
         }
       }

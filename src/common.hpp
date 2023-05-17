@@ -20,9 +20,9 @@
 #include <vector>
 #include <optional>
 #include <unordered_map>
-#include <any>
-#include <typeinfo>
-#include <typeindex>
+// #include <any>
+// #include <typeinfo>
+// #include <typeindex>
 #include <string>
 #include <variant>
 
@@ -73,10 +73,14 @@ typedef std::variant<
   std::vector<DateTime>
   > attribute_vec;
 typedef std::unordered_map<std::string, attribute_vec> attribute_vec_map;
+// missing:
+// - maintain equal size for all vectors in map
+// - size() member
 class AttributeVecMap
 {
   attribute_vec_map attribs_;
   public:
+  typedef attribute_vec_map::const_iterator const_iterator;
   template<typename T> bool holds_alternative(const std::string& name) const;
   template<typename T> const std::vector<T>* get_if(const std::string& name) const;
   template<typename T> std::vector<T>* get_if(const std::string& name);
@@ -85,6 +89,9 @@ class AttributeVecMap
   attribute_vec_map& get_attributes();
   const attribute_vec_map& get_attributes() const;
   bool has_attributes() const;
+
+  const_iterator begin() const;
+  const_iterator end() const;
 };
 
 class Box
@@ -216,17 +223,19 @@ public:
   bool has_attributes() const;
 };
 
-class SegmentCollection : public GeometryCollection<std::array<arr3f, 2>>, public AttributeVecMap
+class SegmentCollection : public GeometryCollection<std::array<arr3f, 2>>
 {
 public:
+  AttributeVecMap attributes;
   size_t vertex_count() const;
   virtual void compute_box();
   float *get_data_ptr();
 };
 
-class PointCollection : public GeometryCollection<arr3f>, public AttributeVecMap
+class PointCollection : public GeometryCollection<arr3f>
 {
 public:
+  AttributeVecMap attributes;
   size_t vertex_count() const;
   virtual void compute_box();
   float *get_data_ptr();
@@ -288,6 +297,7 @@ struct Image {
   float cellsize;
   float nodataval;
 };
+typedef std::unordered_map<std::string, Image> ImageMap;
 
 std::vector<std::string> split_string(const std::string& s, std::string delimiter);
 

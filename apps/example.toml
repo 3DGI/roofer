@@ -1,38 +1,42 @@
 [input.footprint]
-path = '/mnt/Data/LocalData/Kadaster/true_ortho_experimenten/4566/4566.gpkg'
-bid = ""
+path = '/home/ravi/git/roofer/roofer_data/yoc-2019-completely-new.gpkg'
+bid = "identificatie"
 
 [[input.pointclouds]]
 name = "AHN3"
 date = 2014
 quality = 1
-path = '/mnt/Data/LocalData/Kadaster/true_ortho_experimenten/4566/merged_AHN3.las'
+path = '/home/ravi/git/roofer/roofer_data/yoc-2019-completely-new-ahn3.laz'
 
-# [[input.pointclouds]]
-# name = "AHN4"
-# date = 2020
-# quality = 0
-# path = 'u'
+[[input.pointclouds]]
+name = "AHN4"
+date = 2020
+quality = 0
+path = '/home/ravi/git/roofer/roofer_data/yoc-2019-completely-new-ahn4.laz'
 
 [[input.pointclouds]]
 name = "KAD2020"
 date = 2020
 quality = 2
-path = '/mnt/Data/LocalData/Kadaster/true_ortho_experimenten/2021_Eindhoven/LAZ/DSM_1500_4142.laz'
+path = '/home/ravi/git/roofer/roofer_data/yoc-2019-completely-new-kadaster.laz'
 
 [parameters]
 cellsize = 0.5
 
 [output]
+path = '/output/test_yoc-2019-completely-new/'
+
 # {bid} will be replaced by building identifier
 # {pc_name} will be replaced by input pointcloud name
-building_toml_file = '/output/KAD_eindhoven/{bid}/config.toml'
-building_las_file = '/output/KAD_eindhoven/{bid}/{bid}.las'
-building_raster_file = '/output/KAD_eindhoven/{bid}/{bid}.tif'
+# {path} will be replaced by path
+building_toml_file = '{path}/{bid}/config_{pc_name}.toml'
+building_las_file = '{path}/{bid}/{bid}_{pc_name}.las'
+building_raster_file = '{path}/{bid}/{bid}_{pc_name}.tif'
+building_gpkg_file = '{path}/{bid}/{bid}.gpkg'
 
 # these get passed through to the geoflow config files that are generated for each building
 [output.reconstruction_parameters]
-DATASET_TITLE="Wippolder"
+DATASET_TITLE="test_all"
 OUTPUT_DIR="/output"
 
 GF_PROCESS_CRS="EPSG:7415"

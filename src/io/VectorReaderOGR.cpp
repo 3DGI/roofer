@@ -89,7 +89,8 @@ class VectorReaderOGR : public VectorReaderInterface {
   using VectorReaderInterface::VectorReaderInterface;
   
   void open(const std::string& source) {
-    GDALAllRegister();
+    if (GDALGetDriverCount() == 0)
+      GDALAllRegister();
     poDS = GDALDatasetUniquePtr(GDALDataset::Open(source.c_str(), GDAL_OF_VECTOR));
     if (poDS == nullptr)
       throw(rooferException("Open failed on " + source));

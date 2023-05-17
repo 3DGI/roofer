@@ -6,7 +6,7 @@ namespace roofer {
     float area;           // footprint area
     float nodata_radius;  // radius of the incribed circle in the largest gap
                           // in the point cloud
-    PointCloudImageBundle& image_bundle;
+    ImageMap& image_bundle;
     std::string name;     // point cloud name
     int quality;          // point cloud quality score. The lower the better the quality.
     int date;             // point cloud acquisition date

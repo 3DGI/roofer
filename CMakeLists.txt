@@ -41,6 +41,8 @@ add_library(rooferlib
   src/common.cpp
   src/projHelper.cpp
   src/io/VectorReaderOGR.cpp
+  src/io/VectorWriterOGR.cpp
+  src/io/RasterWriterGDAL.cpp
   src/io/StreamCropper.cpp
   src/io/LASWriter.cpp
   src/geometry/Raster.cpp

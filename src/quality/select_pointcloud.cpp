@@ -4,6 +4,8 @@
 #include <cmath>
 #include <numeric>
 
+// #include "spdlog/spdlog.h"
+
 namespace roofer {
 
   // out the one with lowest quality val on top
@@ -157,11 +159,11 @@ namespace roofer {
                  const float& threshold_mutation_fraction,
                  const float& threshold_mutation_difference) {
     auto footprint_mask =
-        computeMask(a->image_bundle.fp.array, 0);
+        computeMask(a->image_bundle["fp"].array, 0);
     auto data_mask_a =
-        computeMask(a->image_bundle.max.array, a->image_bundle.max.nodataval);
+        computeMask(a->image_bundle["max"].array, a->image_bundle["max"].nodataval);
     auto data_mask_b =
-        computeMask(b->image_bundle.max.array, b->image_bundle.max.nodataval);
+        computeMask(b->image_bundle["max"].array, b->image_bundle["max"].nodataval);
 
     std::vector<bool> all_mask;
     all_mask.resize(footprint_mask.size());
@@ -172,13 +174,13 @@ namespace roofer {
 
     std::vector<float> all_mask_on_a;
     all_mask_on_a.resize(all_mask.size());
-    std::transform(a->image_bundle.max.array.begin(),
-                   a->image_bundle.max.array.end(), all_mask.begin(),
+    std::transform(a->image_bundle["max"].array.begin(),
+                   a->image_bundle["max"].array.end(), all_mask.begin(),
                    all_mask_on_a.begin(), std::multiplies<>());
     std::vector<float> all_mask_on_b;
     all_mask_on_b.resize(all_mask.size());
-    std::transform(b->image_bundle.max.array.begin(),
-                   b->image_bundle.max.array.end(), all_mask.begin(),
+    std::transform(b->image_bundle["max"].array.begin(),
+                   b->image_bundle["max"].array.end(), all_mask.begin(),
                    all_mask_on_b.begin(), std::multiplies<>());
 
     // The cells are marked 'true' when there is a change between the two
@@ -214,12 +216,12 @@ namespace roofer {
   }
 
   float computeNoDataFraction(const CandidatePointCloud* pc) {
-    auto& fp = pc->image_bundle.fp.array;
-    auto& cnt = pc->image_bundle.cnt.array;
-    auto& cnt_nodata = pc->image_bundle.cnt.nodataval;
+    auto& fp = pc->image_bundle["fp"].array;
+    auto& cnt = pc->image_bundle["cnt"].array;
+    auto& cnt_nodata = pc->image_bundle["cnt"].nodataval;
     size_t fp_cnt{0}, data_cnt{0};
-    for (size_t i=i; fp.size(); ++i) {
-      if( fp[i] ) {
+    for (size_t i=0; i<fp.size(); ++i) {
+      if( fp[i] != 0 ) {
         ++fp_cnt;
         if( cnt[i] != cnt_nodata ) {
           ++data_cnt;
