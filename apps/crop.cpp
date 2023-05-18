@@ -60,6 +60,10 @@ int main(int argc, const char * argv[]) {
   // std::string path_pointcloud = "/mnt/Data/LocalData/Kadaster/true_ortho_experimenten/2021_LAZ_Leiden_Almere/DenHaag/83000_455000.laz";
   std::vector<InputPointcloud> input_pointclouds;
 
+  bool output_all = false;
+  if(cmdl[{"-a", "--output-all"}]) {
+    output_all = true;
+  }
   // TOML config parsing
   // pointclouds, footprints
   std::string config_path;
@@ -199,7 +203,9 @@ int main(int argc, const char * argv[]) {
   spdlog::info("Selecting and writing pointclouds");
   auto bid_vec = attributes.get_if<std::string>(building_bid_attribute);
   auto& pc_select = attributes.insert_vec<std::string>("pc_select");
+  // auto& pc_source = attributes.insert_vec<std::string>("pc_source");
   std::string bid;
+  bool only_write_selected = !output_all;
   for (unsigned i=0; i<footprints.size(); ++i) {
 
     if (bid_vec) {
@@ -247,7 +253,6 @@ int main(int argc, const char * argv[]) {
     // TODO: Compare PC with year of construction of footprint if available
     if (selected) spdlog::info("Selecting pointcloud: {}", input_pointclouds[selected->index].name);
     
-    bool only_write_selected = false;
     {
       // fs::create_directories(fs::path(fname).parent_path());
       std::string fp_path = fmt::format(building_gpkg_file_spec, fmt::arg("bid", bid), fmt::arg("path", output_path));
@@ -255,8 +260,11 @@ int main(int argc, const char * argv[]) {
 
       size_t j=0;
       auto selected_index = selected ? selected->index : -1;
-      for (auto& ipc : input_pointclouds) { 
-        if(selected_index != j && only_write_selected) continue;
+      for (auto& ipc : input_pointclouds) {
+        if((selected_index != j) && (only_write_selected)) {
+          ++j;
+          continue;
+        };
 
         std::string pc_path = fmt::format(building_las_file_spec, fmt::arg("bid", bid), fmt::arg("pc_name", ipc.name), fmt::arg("path", output_path));
         std::string raster_path = fmt::format(building_raster_file_spec, fmt::arg("bid", bid), fmt::arg("pc_name", ipc.name), fmt::arg("path", output_path));
@@ -284,7 +292,7 @@ int main(int argc, const char * argv[]) {
           {"GF_PROCESS_OFFSET_Z", (*pj->data_offset)[2]},
 
           {"U_SOURCE", ipc.name},
-          {"U_SURVEY_DATE", ipc.date},
+          {"U_SURVEY_DATE", std::to_string(ipc.date)},
         };
         auto tbl_gfparams = config["output"]["reconstruction_parameters"].as_table();
         gf_config.insert(tbl_gfparams->begin(), tbl_gfparams->end());
