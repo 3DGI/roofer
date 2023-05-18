@@ -52,5 +52,5 @@ plane_detect__normal_angle=0.750000
 thres_alpha=0.250000
 thres_reg_line_dist=0.800000
 thres_reg_line_ext=3.000000
-clip_ground=false
+clip_ground=true
 lod1_extrude_to_max=true

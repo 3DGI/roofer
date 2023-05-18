@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.21)
 project (roofer VERSION 0.1)
 
+option(RF_BUILD_GUI "Build the GUI apps" OFF)
+
 # ptinpoly
 add_library(ptinpoly STATIC external/ptinpoly/ptinpoly.c)
 set_target_properties(
