@@ -33,6 +33,7 @@ building_toml_file = '{path}/{bid}/config_{pc_name}.toml'
 building_las_file = '{path}/{bid}/{bid}_{pc_name}.las'
 building_raster_file = '{path}/{bid}/{bid}_{pc_name}.tif'
 building_gpkg_file = '{path}/{bid}/{bid}.gpkg'
+metadata_json_file = '{path}/metadata.json'
 
 # these get passed through to the geoflow config files that are generated for each building
 [output.reconstruction_parameters]
@@ -53,4 +54,4 @@ thres_alpha=0.250000
 thres_reg_line_dist=0.800000
 thres_reg_line_ext=3.000000
 clip_ground=true
-lod1_extrude_to_max=true
+lod1_extrude_to_max=false

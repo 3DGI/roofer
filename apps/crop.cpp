@@ -71,6 +71,7 @@ int main(int argc, const char * argv[]) {
   std::string building_las_file_spec;
   std::string building_gpkg_file_spec;
   std::string building_raster_file_spec;
+  std::string metadata_json_file_spec;
   std::string output_path;
   std::string building_bid_attribute;
   toml::table config;
@@ -133,6 +134,10 @@ int main(int argc, const char * argv[]) {
     auto building_raster_file_spec_ = config["output"]["building_raster_file"].value<std::string>();
     if(building_raster_file_spec_.has_value())
       building_raster_file_spec = *building_raster_file_spec_;
+
+    auto metadata_json_file_spec_ = config["output"]["metadata_json_file"].value<std::string>();
+    if(metadata_json_file_spec_.has_value())
+      metadata_json_file_spec = *metadata_json_file_spec_;
       
     auto output_path_ = config["output"]["path"].value<std::string>();
     if(output_path_.has_value())
@@ -317,4 +322,31 @@ int main(int argc, const char * argv[]) {
   std::string fp_path = output_path + "/index.gpkg";
   VectorWriter->writePolygons(fp_path, footprints, attributes);
 
+  auto md_scale = roofer::arr3d{0.001, 0.001, 0.001};
+  auto md_trans = *pj->data_offset;
+
+  auto metadatajson = toml::table{
+    { "type", "CityJSON" },
+    { "version", "1.1" },
+    { "CityObjects", toml::table{} },
+    { "vertices", toml::array{} },
+    { "transform", toml::table{
+        { "translate", toml::array{md_scale[0], md_scale[1], md_scale[2]} },
+        { "scale", toml::array{md_trans[0], md_trans[1], md_trans[2]} },
+      }
+    },
+    { "metadata", toml::table{
+        { "referenceSystem", "https://www.opengis.net/def/crs/EPSG/0/7415" }
+      }
+    }
+  };
+  // serializing as JSON using toml::json_formatter:
+  std::string metadata_json_file = fmt::format(metadata_json_file_spec, fmt::arg("path", output_path));
+  std::ofstream ofs;
+  ofs.open(metadata_json_file);
+    ofs << toml::json_formatter{ metadatajson };
+  ofs.close();
+
+
+  return 0;
 }
