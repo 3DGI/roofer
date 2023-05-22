@@ -24,12 +24,12 @@ path = '/home/ravi/git/roofer/roofer_data/yoc-2019-completely-new-kadaster.laz'
 cellsize = 0.5
 
 [output]
-path = '/output/test_all/'
+path = '/output/test_all'
 
 # {bid} will be replaced by building identifier
 # {pc_name} will be replaced by input pointcloud name
 # {path} will be replaced by path
-building_toml_file = '{path}/0/objects/{bid}/crop/config{pc_name}.toml'
+building_toml_file = '{path}/0/objects/{bid}/config{pc_name}.toml'
 building_las_file = '{path}/0/objects/{bid}/crop/{bid}_{pc_name}.las'
 building_raster_file = '{path}/0/objects/{bid}/crop/{bid}_{pc_name}.tif'
 building_gpkg_file = '{path}/0/objects/{bid}/crop/{bid}.gpkg'
@@ -43,6 +43,10 @@ index_file = '{path}/0/index.gpkg'
 [output.reconstruction_parameters]
 GF_PROCESS_CRS="EPSG:7415"
 OUTPUT_CRS="EPSG:7415"
+GF_PROCESS_OFFSET_OVERRIDE = true
+GF_PROCESS_OFFSET_X = 171800.0
+GF_PROCESS_OFFSET_Y = 472700.0
+GF_PROCESS_OFFSET_Z = 0.0
 
 line_detect__epsilon=1.000000
 lod13__step_height=3.000000

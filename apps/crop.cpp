@@ -64,7 +64,8 @@ int main(int argc, const char * argv[]) {
 
   bool output_all = cmdl[{"-a", "--output-all"}];
   bool write_rasters = cmdl[{"-r", "--rasters"}];
-  
+  bool write_metadata = cmdl[{"-m", "--metadata"}];
+
   // TOML config parsing
   // pointclouds, footprints
   std::string config_path;
@@ -139,9 +140,11 @@ int main(int argc, const char * argv[]) {
     if(building_raster_file_spec_.has_value())
       building_raster_file_spec = *building_raster_file_spec_;
 
-    auto metadata_json_file_spec_ = config["output"]["metadata_json_file"].value<std::string>();
-    if(metadata_json_file_spec_.has_value())
-      metadata_json_file_spec = *metadata_json_file_spec_;
+    if (write_metadata) {
+      auto metadata_json_file_spec_ = config["output"]["metadata_json_file"].value<std::string>();
+      if(metadata_json_file_spec_.has_value())
+        metadata_json_file_spec = *metadata_json_file_spec_;
+    }
 
     auto building_jsonl_file_spec_ = config["output"]["building_jsonl_file"].value<std::string>();
     if(building_jsonl_file_spec_.has_value())
@@ -313,14 +316,16 @@ int main(int argc, const char * argv[]) {
           {"GROUND_ELEVATION", input_pointclouds[j].ground_elevations[i]},
           {"OUTPUT_JSONL", jsonl_path },
 
-          {"GF_PROCESS_OFFSET_OVERRIDE", true},
-          {"GF_PROCESS_OFFSET_X", (*pj->data_offset)[0]},
-          {"GF_PROCESS_OFFSET_Y", (*pj->data_offset)[1]},
-          {"GF_PROCESS_OFFSET_Z", (*pj->data_offset)[2]},
-
           {"U_SOURCE", ipc.name},
           {"U_SURVEY_DATE", std::to_string(ipc.date)},
         };
+
+        if (write_metadata) {
+            gf_config.insert("GF_PROCESS_OFFSET_OVERRIDE", true);
+            gf_config.insert("GF_PROCESS_OFFSET_X", (*pj->data_offset)[0]);
+            gf_config.insert("GF_PROCESS_OFFSET_Y", (*pj->data_offset)[1]);
+            gf_config.insert("GF_PROCESS_OFFSET_Z", (*pj->data_offset)[2]);
+        }
         auto tbl_gfparams = config["output"]["reconstruction_parameters"].as_table();
         gf_config.insert(tbl_gfparams->begin(), tbl_gfparams->end());
 
@@ -375,7 +380,7 @@ int main(int argc, const char * argv[]) {
   }
 
   // Write metadata.json for json features 
-  {  
+  if (write_metadata) {  
     auto md_scale = roofer::arr3d{0.001, 0.001, 0.001};
     auto md_trans = *pj->data_offset;
 
