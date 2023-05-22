@@ -24,22 +24,23 @@ path = '/home/ravi/git/roofer/roofer_data/yoc-2019-completely-new-kadaster.laz'
 cellsize = 0.5
 
 [output]
-path = '/output/test_yoc-2019-completely-new/'
+path = '/output/test_all/'
 
 # {bid} will be replaced by building identifier
 # {pc_name} will be replaced by input pointcloud name
 # {path} will be replaced by path
-building_toml_file = '{path}/{bid}/config_{pc_name}.toml'
-building_las_file = '{path}/{bid}/{bid}_{pc_name}.las'
-building_raster_file = '{path}/{bid}/{bid}_{pc_name}.tif'
-building_gpkg_file = '{path}/{bid}/{bid}.gpkg'
-metadata_json_file = '{path}/metadata.json'
+building_toml_file = '{path}/0/objects/{bid}/crop/config{pc_name}.toml'
+building_las_file = '{path}/0/objects/{bid}/crop/{bid}_{pc_name}.las'
+building_raster_file = '{path}/0/objects/{bid}/crop/{bid}_{pc_name}.tif'
+building_gpkg_file = '{path}/0/objects/{bid}/crop/{bid}.gpkg'
+building_jsonl_file = '{path}/0/objects/{bid}/reconstruct/{pc_name}_{bid}.city.jsonl'
+
+metadata_json_file = '{path}/0/metadata.json'
+jsonl_list_file = '{path}/0/features_{pc_name}.txt'
+index_file = '{path}/0/index.gpkg'
 
 # these get passed through to the geoflow config files that are generated for each building
 [output.reconstruction_parameters]
-DATASET_TITLE="test_all"
-OUTPUT_DIR="/output"
-
 GF_PROCESS_CRS="EPSG:7415"
 OUTPUT_CRS="EPSG:7415"
 

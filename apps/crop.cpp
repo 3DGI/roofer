@@ -21,7 +21,9 @@
 #include <iostream>
 #include <fstream>
 #include <filesystem>
+#include <sstream>
 #include <string>
+#include <unordered_map>
 namespace fs = std::filesystem;
 
 void print_help(std::string program_name) {
@@ -60,10 +62,9 @@ int main(int argc, const char * argv[]) {
   // std::string path_pointcloud = "/mnt/Data/LocalData/Kadaster/true_ortho_experimenten/2021_LAZ_Leiden_Almere/DenHaag/83000_455000.laz";
   std::vector<InputPointcloud> input_pointclouds;
 
-  bool output_all = false;
-  if(cmdl[{"-a", "--output-all"}]) {
-    output_all = true;
-  }
+  bool output_all = cmdl[{"-a", "--output-all"}];
+  bool write_rasters = cmdl[{"-r", "--rasters"}];
+  
   // TOML config parsing
   // pointclouds, footprints
   std::string config_path;
@@ -71,6 +72,9 @@ int main(int argc, const char * argv[]) {
   std::string building_las_file_spec;
   std::string building_gpkg_file_spec;
   std::string building_raster_file_spec;
+  std::string building_jsonl_file_spec;
+  std::string jsonl_list_file_spec;
+  std::string index_file_spec;
   std::string metadata_json_file_spec;
   std::string output_path;
   std::string building_bid_attribute;
@@ -138,7 +142,19 @@ int main(int argc, const char * argv[]) {
     auto metadata_json_file_spec_ = config["output"]["metadata_json_file"].value<std::string>();
     if(metadata_json_file_spec_.has_value())
       metadata_json_file_spec = *metadata_json_file_spec_;
+
+    auto building_jsonl_file_spec_ = config["output"]["building_jsonl_file"].value<std::string>();
+    if(building_jsonl_file_spec_.has_value())
+      building_jsonl_file_spec = *building_jsonl_file_spec_;
+
+    auto index_file_spec_ = config["output"]["index_file"].value<std::string>();
+    if(index_file_spec_.has_value())
+      index_file_spec = *index_file_spec_;
       
+    auto jsonl_list_file_spec_ = config["output"]["jsonl_list_file"].value<std::string>();
+    if(jsonl_list_file_spec_.has_value())
+      jsonl_list_file_spec = *jsonl_list_file_spec_;
+
     auto output_path_ = config["output"]["path"].value<std::string>();
     if(output_path_.has_value())
       output_path = *output_path_;
@@ -209,6 +225,7 @@ int main(int argc, const char * argv[]) {
   auto bid_vec = attributes.get_if<std::string>(building_bid_attribute);
   auto& pc_select = attributes.insert_vec<std::string>("pc_select");
   // auto& pc_source = attributes.insert_vec<std::string>("pc_source");
+  std::unordered_map<std::string, roofer::vec1s> jsonl_paths;
   std::string bid;
   bool only_write_selected = !output_all;
   for (unsigned i=0; i<footprints.size(); ++i) {
@@ -236,7 +253,9 @@ int main(int argc, const char * argv[]) {
             j++
           }
         );
+        jsonl_paths.insert({ipc.name, roofer::vec1s{}});
       }
+      jsonl_paths.insert({"", roofer::vec1s{}});
     }
     const roofer::CandidatePointCloud* selected = nullptr;
     if(input_pointclouds.size()>1) {
@@ -273,11 +292,14 @@ int main(int argc, const char * argv[]) {
 
         std::string pc_path = fmt::format(building_las_file_spec, fmt::arg("bid", bid), fmt::arg("pc_name", ipc.name), fmt::arg("path", output_path));
         std::string raster_path = fmt::format(building_raster_file_spec, fmt::arg("bid", bid), fmt::arg("pc_name", ipc.name), fmt::arg("path", output_path));
+        std::string jsonl_path = fmt::format(building_jsonl_file_spec, fmt::arg("bid", bid), fmt::arg("pc_name", ipc.name), fmt::arg("path", output_path));
         
-        RasterWriter->writeBands(
-          raster_path,
-          ipc.building_rasters[i]
-        );
+        if (write_rasters) {
+          RasterWriter->writeBands(
+            raster_path,
+            ipc.building_rasters[i]
+          );
+        }
 
         LASWriter->write_pointcloud(
           input_pointclouds[j].building_clouds[i],
@@ -289,7 +311,7 @@ int main(int argc, const char * argv[]) {
           {"INPUT_POINTCLOUD", pc_path},
           {"BID", bid},
           {"GROUND_ELEVATION", input_pointclouds[j].ground_elevations[i]},
-          {"TILE_ID", "0"},
+          {"OUTPUT_JSONL", jsonl_path },
 
           {"GF_PROCESS_OFFSET_OVERRIDE", true},
           {"GF_PROCESS_OFFSET_X", (*pj->data_offset)[0]},
@@ -302,14 +324,24 @@ int main(int argc, const char * argv[]) {
         auto tbl_gfparams = config["output"]["reconstruction_parameters"].as_table();
         gf_config.insert(tbl_gfparams->begin(), tbl_gfparams->end());
 
-        std::ofstream ofs;
-        std::string config_path = fmt::format(building_toml_file_spec, fmt::arg("bid", bid), fmt::arg("pc_name", ipc.name), fmt::arg("path", output_path));
-        ofs.open(config_path);
-        ofs << gf_config;
-        ofs.close();
-        if(selected_index == j) {
+        if(!only_write_selected) {
           std::ofstream ofs;
-          std::string config_path = fmt::format(building_toml_file_spec, fmt::arg("bid", bid), fmt::arg("pc_name", "optimal"), fmt::arg("path", output_path));
+          std::string config_path = fmt::format(building_toml_file_spec, fmt::arg("bid", bid), fmt::arg("pc_name", ipc.name), fmt::arg("path", output_path));
+          ofs.open(config_path);
+          ofs << gf_config;
+          ofs.close();
+
+          jsonl_paths[ipc.name].push_back( jsonl_path );
+        }
+        if(selected_index == j) {
+          // set optimal jsonl path
+          std::string jsonl_path = fmt::format(building_jsonl_file_spec, fmt::arg("bid", bid), fmt::arg("pc_name", ""), fmt::arg("path", output_path));
+          gf_config.insert_or_assign("OUTPUT_JSONL", jsonl_path);
+          jsonl_paths[""].push_back( jsonl_path );
+
+          // write optimal config
+          std::ofstream ofs;
+          std::string config_path = fmt::format(building_toml_file_spec, fmt::arg("bid", bid), fmt::arg("pc_name", ""), fmt::arg("path", output_path));
           ofs.open(config_path);
           ofs << gf_config;
           ofs.close();
@@ -319,34 +351,63 @@ int main(int argc, const char * argv[]) {
     }
     // write config
   }
-  std::string fp_path = output_path + "/index.gpkg";
-  VectorWriter->writePolygons(fp_path, footprints, attributes);
 
-  auto md_scale = roofer::arr3d{0.001, 0.001, 0.001};
-  auto md_trans = *pj->data_offset;
+  // Write index output
+  {
+    std::string index_file = fmt::format(index_file_spec, fmt::arg("path", output_path));
+    VectorWriter->writePolygons(index_file, footprints, attributes);
+  }
 
-  auto metadatajson = toml::table{
-    { "type", "CityJSON" },
-    { "version", "1.1" },
-    { "CityObjects", toml::table{} },
-    { "vertices", toml::array{} },
-    { "transform", toml::table{
-        { "translate", toml::array{md_scale[0], md_scale[1], md_scale[2]} },
-        { "scale", toml::array{md_trans[0], md_trans[1], md_trans[2]} },
-      }
-    },
-    { "metadata", toml::table{
-        { "referenceSystem", "https://www.opengis.net/def/crs/EPSG/0/7415" }
+  // write the txt containing paths to all jsonl features to be written by reconstruct
+  {
+    
+    for(auto& [name, pathsvec] : jsonl_paths) {
+      if(pathsvec.size()!=0) {
+        std::string jsonl_list_file = fmt::format(jsonl_list_file_spec, fmt::arg("path", output_path), fmt::arg("pc_name", name));
+        std::ofstream ofs;
+        ofs.open(jsonl_list_file);
+        for(auto& jsonl_p : pathsvec) {
+          ofs << jsonl_p << "\n";
+        }
+        ofs.close();
       }
     }
-  };
-  // serializing as JSON using toml::json_formatter:
-  std::string metadata_json_file = fmt::format(metadata_json_file_spec, fmt::arg("path", output_path));
-  std::ofstream ofs;
-  ofs.open(metadata_json_file);
-    ofs << toml::json_formatter{ metadatajson };
-  ofs.close();
+  }
 
+  // Write metadata.json for json features 
+  {  
+    auto md_scale = roofer::arr3d{0.001, 0.001, 0.001};
+    auto md_trans = *pj->data_offset;
 
+    auto metadatajson = toml::table{
+      { "type", "CityJSON" },
+      { "version", "1.1" },
+      { "CityObjects", toml::table{} },
+      { "vertices", toml::array{} },
+      { "transform", toml::table{
+          { "scale", toml::array{md_scale[0], md_scale[1], md_scale[2]} },
+          { "translate", toml::array{md_trans[0], md_trans[1], md_trans[2]} },
+        }
+      },
+      { "metadata", toml::table{
+          { "referenceSystem", "https://www.opengis.net/def/crs/EPSG/0/7415" }
+        }
+      }
+    };
+    // serializing as JSON using toml::json_formatter:
+    std::string metadata_json_file = fmt::format(metadata_json_file_spec, fmt::arg("path", output_path));
+    
+    // minimize json
+    std::stringstream ss;
+    ss << toml::json_formatter{ metadatajson };
+    auto s = ss.str();
+    s.erase(std::remove(s.begin(), s.end(), '\n'), s.cend());
+    s.erase(std::remove(s.begin(), s.end(), ' '), s.cend());
+
+    std::ofstream ofs;
+    ofs.open(metadata_json_file);
+    ofs << s;
+    ofs.close();
+  }
   return 0;
 }

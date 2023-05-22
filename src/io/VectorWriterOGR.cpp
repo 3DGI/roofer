@@ -37,12 +37,9 @@ class VectorWriterOGR : public VectorWriterInterface {
   std::string conn_string_ = "out";
   std::string gdaldriver_ = "GPKG";
   std::string layername_ = "geom";
-  // bool overwrite_dataset_ = false;
-  bool overwrite_layer_ = false;
-  bool overwrite_file_ = false;
+  bool overwrite_layer_ = true;
+  bool overwrite_file_ = true;
   bool create_directories_ = true;
-  bool require_attributes_ = true;
-  bool only_output_mapped_attrs_ = false;
   bool do_transactions_ = false;
   int transaction_batch_size_ = 1000;
 
