@@ -321,10 +321,13 @@ int main(int argc, const char * argv[]) {
         };
 
         if (write_metadata) {
-            gf_config.insert("GF_PROCESS_OFFSET_OVERRIDE", true);
-            gf_config.insert("GF_PROCESS_OFFSET_X", (*pj->data_offset)[0]);
-            gf_config.insert("GF_PROCESS_OFFSET_Y", (*pj->data_offset)[1]);
-            gf_config.insert("GF_PROCESS_OFFSET_Z", (*pj->data_offset)[2]);
+            // gf_config.insert("GF_PROCESS_OFFSET_OVERRIDE", true);
+            gf_config.insert("CITYJSON_TRANSLATE_X", (*pj->data_offset)[0]);
+            gf_config.insert("CITYJSON_TRANSLATE_Y", (*pj->data_offset)[1]);
+            gf_config.insert("CITYJSON_TRANSLATE_Z", (*pj->data_offset)[2]);
+            gf_config.insert("CITYJSON_SCALE_X", 0.001);
+            gf_config.insert("CITYJSON_SCALE_Y", 0.001);
+            gf_config.insert("CITYJSON_SCALE_Z", 0.001);
         }
         auto tbl_gfparams = config["output"]["reconstruction_parameters"].as_table();
         gf_config.insert(tbl_gfparams->begin(), tbl_gfparams->end());
