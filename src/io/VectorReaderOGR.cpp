@@ -46,41 +46,69 @@ class VectorReaderOGR : public VectorReaderInterface {
     {
       if (auto attr = attributes->get_if<bool>(name))
       {
-        attr->push_back(bool(poFeature.GetFieldAsInteger(name.c_str())));
+        if (poFeature.IsFieldNull(idx)) {
+          attr->push_back(std::nullopt);
+        } else {
+          attr->push_back(bool(poFeature.GetFieldAsInteger(name.c_str())));
+        }
       }
       else if (auto attr = attributes->get_if<int>(name))
       {
-        if(name == "OGR_FID") {
-          attr->push_back(int(poFeature.GetFID()));
+        if (poFeature.IsFieldNull(idx)) {
+          attr->push_back(std::nullopt);
         } else {
-          attr->push_back(int(poFeature.GetFieldAsInteger64(name.c_str())));
+          if(name == "OGR_FID") {
+            attr->push_back(int(poFeature.GetFID()));
+          } else {
+            attr->push_back(int(poFeature.GetFieldAsInteger64(name.c_str())));
+          }
         }
       }
       else if (auto attr = attributes->get_if<float>(name))
       {
-        attr->push_back(float(poFeature.GetFieldAsDouble(name.c_str())));
+        if (poFeature.IsFieldNull(idx)) {
+          attr->push_back(std::nullopt);
+        } else {
+          attr->push_back(float(poFeature.GetFieldAsDouble(name.c_str())));
+        }
       }
       else if (auto attr = attributes->get_if<std::string>(name))
       {
-        attr->push_back((std::string)poFeature.GetFieldAsString(name.c_str()));
+        if (poFeature.IsFieldNull(idx)) {
+          attr->push_back(std::nullopt);
+        } else {
+          attr->push_back((std::string)poFeature.GetFieldAsString(name.c_str()));
+        }
       }
       else if (auto attr = attributes->get_if<Date>(name))
       {
-        DateTime t;
-        poFeature.GetFieldAsDateTime(field_name_map[name], &t.date.year, &t.date.month, &t.date.day, nullptr, nullptr, &t.time.second, nullptr);
-        attr->push_back(t.date);
+        if (poFeature.IsFieldNull(idx)) {
+          attr->push_back(std::nullopt);
+        } else {
+          DateTime t;
+          poFeature.GetFieldAsDateTime(field_name_map[name], &t.date.year, &t.date.month, &t.date.day, nullptr, nullptr, &t.time.second, nullptr);
+          attr->push_back(t.date);
+        }
       }
       else if (auto attr = attributes->get_if<Time>(name))
       {
-        Time time;
-        poFeature.GetFieldAsDateTime(field_name_map[name], nullptr, nullptr, nullptr, &time.hour, &time.minute, &time.second, &time.timeZone);
-        attr->push_back(time);
+        if (poFeature.IsFieldNull(idx)) {
+          attr->push_back(std::nullopt);
+        } else {
+          Time time;
+          poFeature.GetFieldAsDateTime(field_name_map[name], nullptr, nullptr, nullptr, &time.hour, &time.minute, &time.second, &time.timeZone);
+          attr->push_back(time);
+        }
       }
       else if (auto attr = attributes->get_if<DateTime>(name))
       {
-        DateTime t;
-        poFeature.GetFieldAsDateTime(field_name_map[name], &t.date.year, &t.date.month, &t.date.day, &t.time.hour, &t.time.minute, &t.time.second, &t.time.timeZone);
-        attr->push_back(t);
+        if (poFeature.IsFieldNull(idx)) {
+          attr->push_back(std::nullopt);
+        } else {
+          DateTime t;
+          poFeature.GetFieldAsDateTime(field_name_map[name], &t.date.year, &t.date.month, &t.date.day, &t.time.hour, &t.time.minute, &t.time.second, &t.time.timeZone);
+          attr->push_back(t);
+        }
       }
     }
   }

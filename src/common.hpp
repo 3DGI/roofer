@@ -33,13 +33,21 @@ typedef std::array<float, 2> arr2f;
 typedef std::array<double, 2> arr2d;
 typedef std::array<float, 3> arr3f;
 typedef std::array<double, 3> arr3d;
-typedef std::vector<arr3f> vec3f;
 typedef std::vector<std::array<float, 2>> vec2f;
+
+typedef std::vector<size_t> vec1ui;
 typedef std::vector<int> vec1i;
 typedef std::vector<bool> vec1b;
 typedef std::vector<float> vec1f;
-typedef std::vector<size_t> vec1ui;
+typedef std::vector<arr3f> vec3f;
 typedef std::vector<std::string> vec1s;
+
+typedef std::vector<std::optional<size_t>> veco1ui;
+typedef std::vector<std::optional<int>> veco1i;
+typedef std::vector<std::optional<bool>> veco1b;
+typedef std::vector<std::optional<float>> veco1f;
+typedef std::vector<std::optional<arr3f>> veco3f;
+typedef std::vector<std::optional<std::string>> veco1s;
 
 // modelled after https://gdal.org/api/ogrfeature_cpp.html#_CPPv4NK10OGRFeature18GetFieldAsDateTimeEiPiPiPiPiPiPiPi
 struct Date {
@@ -58,19 +66,23 @@ struct DateTime {
   Time time;
 };
 
+typedef std::vector<std::optional<Date>> veco1D;
+typedef std::vector<std::optional<Time>> veco1T;
+typedef std::vector<std::optional<DateTime>> veco1DT;
+
 // Attribute types
 typedef std::variant<bool, int, std::string, float> attribute_value;
 typedef std::unordered_map<std::string, std::vector<attribute_value>> AttributeMap;
 
 typedef std::variant<
-  vec1b, 
-  vec1i, 
-  vec1s, 
-  vec1f, 
-  vec3f, 
-  std::vector<Date>,
-  std::vector<Time>,
-  std::vector<DateTime>
+  veco1b, 
+  veco1i, 
+  veco1s, 
+  veco1f, 
+  veco3f, 
+  veco1D,
+  veco1T,
+  veco1DT
   > attribute_vec;
 typedef std::unordered_map<std::string, attribute_vec> attribute_vec_map;
 // missing:
@@ -82,9 +94,9 @@ class AttributeVecMap
   public:
   typedef attribute_vec_map::const_iterator const_iterator;
   template<typename T> bool holds_alternative(const std::string& name) const;
-  template<typename T> const std::vector<T>* get_if(const std::string& name) const;
-  template<typename T> std::vector<T>* get_if(const std::string& name);
-  template<typename T> std::vector<T>& insert_vec(const std::string& name);
+  template<typename T> const std::vector<std::optional<T>>* get_if(const std::string& name) const;
+  template<typename T> std::vector<std::optional<T>>* get_if(const std::string& name);
+  template<typename T> std::vector<std::optional<T>>& insert_vec(const std::string& name);
   
   attribute_vec_map& get_attributes();
   const attribute_vec_map& get_attributes() const;

@@ -79,15 +79,15 @@ namespace roofer {
         laspoint.set_y(p[1]);
         laspoint.set_z(p[2]);
         if (classification) {
-          laspoint.set_classification((*classification)[i]);
+          laspoint.set_classification((*classification)[i].value());
         }
         if (intensity) {
-          laspoint.set_intensity((*intensity)[i]);
+          laspoint.set_intensity((*intensity)[i].value());
         }
         if (colors) {
-          laspoint.set_R((*colors)[i][0] * 65535);
-          laspoint.set_G((*colors)[i][1] * 65535);
-          laspoint.set_B((*colors)[i][2] * 65535);
+          laspoint.set_R((*colors)[i].value()[0] * 65535);
+          laspoint.set_G((*colors)[i].value()[1] * 65535);
+          laspoint.set_B((*colors)[i].value()[2] * 65535);
         }
 
         laswriter->write_point(&laspoint);

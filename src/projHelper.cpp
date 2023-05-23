@@ -95,7 +95,7 @@ namespace roofer {
         if (!projFwdTransform)
           throw rooferException("Unable to create forward transformation.");
       } else {
-        std::cout << "Unable to create CRS transform, process CRS is undefined\n";
+        // std::cout << "Unable to create CRS transform, process CRS is undefined\n";
       }
     };
     void set_rev_crs_transform(const char* target_crs, bool normalize_for_visualization = false) override {
@@ -111,7 +111,7 @@ namespace roofer {
         if (!projRevTransform)
           throw rooferException("Unable to create reverse transformation.");
       } else {
-        std::cout << "Unable to create CRS transform, process CRS is undefined\n";
+        // std::cout << "Unable to create CRS transform, process CRS is undefined\n";
       }
     };
     std::string get_rev_crs_id_auth_name() override {

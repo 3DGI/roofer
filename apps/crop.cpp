@@ -59,11 +59,7 @@ int main(int argc, const char * argv[]) {
   cmdl.parse(argc, argv);
   std::string program_name = cmdl[0];
 
-  // std::string vector_file = "/home/ravi/git/gfc-building-reconstruction/test-data/wippolder.gpkg";
-  // std::string las_source = "/home/ravi/git/gfc-building-reconstruction/test-data/wippolder.las";
   std::string path_footprint; // = "/mnt/Data/LocalData/Kadaster/true_ortho_experimenten/2021_LAZ_Leiden_Almere/DenHaag/bag_83000_455000.gpkg";
-  // std::string path_pointcloud = "/mnt/Data/LocalData/Kadaster/true_ortho_experimenten/2021_LAZ_Leiden_Almere/DenHaag/83000_455000.laz";
-  std::vector<InputPointcloud> input_pointclouds;
 
   bool output_all = cmdl[{"-a", "--all"}];
   bool write_rasters = cmdl[{"-r", "--rasters"}];
@@ -73,6 +69,8 @@ int main(int argc, const char * argv[]) {
     print_help(program_name);
     return EXIT_SUCCESS;
   }
+
+  std::vector<InputPointcloud> input_pointclouds;
 
   // TOML config parsing
   // pointclouds, footprints
@@ -242,7 +240,7 @@ int main(int argc, const char * argv[]) {
   for (unsigned i=0; i<footprints.size(); ++i) {
 
     if (bid_vec) {
-      bid = (*bid_vec)[i];
+      bid = (*bid_vec)[i].value();
     } else {
       bid = std::to_string(i);
     }

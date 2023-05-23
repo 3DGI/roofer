@@ -278,7 +278,7 @@ bool AttributeVecMap::has_attributes() const
 }
 template<typename T> bool AttributeVecMap::holds_alternative(const std::string& name) const{
   if (attribs_.find(name) != attribs_.end()) {
-    return std::holds_alternative<std::vector<T>>(attribs_.at(name));
+    return std::holds_alternative<std::vector<std::optional<T>>>(attribs_.at(name));
   }
   return false;
 }
@@ -291,48 +291,48 @@ template bool AttributeVecMap::holds_alternative<DateTime>(const std::string& na
 template bool AttributeVecMap::holds_alternative<Date>(const std::string& name) const;
 template bool AttributeVecMap::holds_alternative<Time>(const std::string& name) const;
 
-template<typename T> const std::vector<T>* AttributeVecMap::get_if(const std::string& name) const{
+template<typename T> const std::vector<std::optional<T>>* AttributeVecMap::get_if(const std::string& name) const{
   if (attribs_.find(name) != attribs_.end()) {
-    return std::get_if<std::vector<T>>(&attribs_.at(name));
+    return std::get_if<std::vector<std::optional<T>>>(&attribs_.at(name));
   }
   return nullptr;
 }
-template const std::vector<bool>* AttributeVecMap::get_if<bool>(const std::string& name) const;
-template const std::vector<int>* AttributeVecMap::get_if<int>(const std::string& name) const;
-template const std::vector<float>* AttributeVecMap::get_if<float>(const std::string& name) const;
-template const std::vector<std::string>* AttributeVecMap::get_if<std::string>(const std::string& name) const;
-template const std::vector<arr3f>* AttributeVecMap::get_if<arr3f>(const std::string& name) const;
-template const std::vector<DateTime>* AttributeVecMap::get_if<DateTime>(const std::string& name) const;
-template const std::vector<Date>* AttributeVecMap::get_if<Date>(const std::string& name) const;
-template const std::vector<Time>* AttributeVecMap::get_if<Time>(const std::string& name) const;
+template const veco1b* AttributeVecMap::get_if<bool>(const std::string& name) const;
+template const veco1i* AttributeVecMap::get_if<int>(const std::string& name) const;
+template const veco1f* AttributeVecMap::get_if<float>(const std::string& name) const;
+template const veco1s* AttributeVecMap::get_if<std::string>(const std::string& name) const;
+template const veco3f* AttributeVecMap::get_if<arr3f>(const std::string& name) const;
+template const veco1DT* AttributeVecMap::get_if<DateTime>(const std::string& name) const;
+template const veco1D* AttributeVecMap::get_if<Date>(const std::string& name) const;
+template const veco1T* AttributeVecMap::get_if<Time>(const std::string& name) const;
 
-template<typename T> std::vector<T>* AttributeVecMap::get_if(const std::string& name) {
+template<typename T> std::vector<std::optional<T>>* AttributeVecMap::get_if(const std::string& name) {
   if (attribs_.find(name) != attribs_.end()) {
-    return std::get_if<std::vector<T>>(&attribs_.at(name));
+    return std::get_if<std::vector<std::optional<T>>>(&attribs_.at(name));
   }
   return nullptr;
 }
-template std::vector<bool>* AttributeVecMap::get_if<bool>(const std::string& name);
-template std::vector<int>* AttributeVecMap::get_if<int>(const std::string& name);
-template std::vector<float>* AttributeVecMap::get_if<float>(const std::string& name);
-template std::vector<std::string>* AttributeVecMap::get_if<std::string>(const std::string& name);
-template std::vector<arr3f>* AttributeVecMap::get_if<arr3f>(const std::string& name);
-template std::vector<DateTime>* AttributeVecMap::get_if<DateTime>(const std::string& name);
-template std::vector<Date>* AttributeVecMap::get_if<Date>(const std::string& name);
-template std::vector<Time>* AttributeVecMap::get_if<Time>(const std::string& name);
+template veco1b* AttributeVecMap::get_if<bool>(const std::string& name);
+template veco1i* AttributeVecMap::get_if<int>(const std::string& name);
+template veco1f* AttributeVecMap::get_if<float>(const std::string& name);
+template veco1s* AttributeVecMap::get_if<std::string>(const std::string& name);
+template veco3f* AttributeVecMap::get_if<arr3f>(const std::string& name);
+template veco1DT* AttributeVecMap::get_if<DateTime>(const std::string& name);
+template veco1D* AttributeVecMap::get_if<Date>(const std::string& name);
+template veco1T* AttributeVecMap::get_if<Time>(const std::string& name);
 
-template<typename T> std::vector<T>& AttributeVecMap::insert_vec(const std::string& name) {
-  attribs_[name] = std::vector<T>{};
-  return std::get<std::vector<T>>(attribs_.at(name));
+template<typename T> std::vector<std::optional<T>>& AttributeVecMap::insert_vec(const std::string& name) {
+  attribs_[name] = std::vector<std::optional<T>>{};
+  return std::get<std::vector<std::optional<T>>>(attribs_.at(name));
 }
-template std::vector<bool>& AttributeVecMap::insert_vec<bool>(const std::string& name);
-template std::vector<int>& AttributeVecMap::insert_vec<int>(const std::string& name);
-template std::vector<float>& AttributeVecMap::insert_vec<float>(const std::string& name);
-template std::vector<std::string>& AttributeVecMap::insert_vec<std::string>(const std::string& name);
-template std::vector<arr3f>& AttributeVecMap::insert_vec<arr3f>(const std::string& name);
-template std::vector<DateTime>& AttributeVecMap::insert_vec<DateTime>(const std::string& name);
-template std::vector<Date>& AttributeVecMap::insert_vec<Date>(const std::string& name);
-template std::vector<Time>& AttributeVecMap::insert_vec<Time>(const std::string& name);
+template veco1b& AttributeVecMap::insert_vec<bool>(const std::string& name);
+template veco1i& AttributeVecMap::insert_vec<int>(const std::string& name);
+template veco1f& AttributeVecMap::insert_vec<float>(const std::string& name);
+template veco1s& AttributeVecMap::insert_vec<std::string>(const std::string& name);
+template veco3f& AttributeVecMap::insert_vec<arr3f>(const std::string& name);
+template veco1DT& AttributeVecMap::insert_vec<DateTime>(const std::string& name);
+template veco1D& AttributeVecMap::insert_vec<Date>(const std::string& name);
+template veco1T& AttributeVecMap::insert_vec<Time>(const std::string& name);
 
 attribute_vec_map::const_iterator AttributeVecMap::begin() const {
   return attribs_.begin();

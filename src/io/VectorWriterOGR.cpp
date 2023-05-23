@@ -265,19 +265,47 @@ class VectorWriterOGR : public VectorWriterInterface {
         // if (!term->get_data_vec()[i].has_value()) continue;
 
         if (auto vec = attributes.get_if<bool>(name)) {
-          poFeature->SetField(attr_id_map[name], (*vec)[i]);
+          if ((*vec)[i].has_value()) {
+            poFeature->SetField(attr_id_map[name], (*vec)[i].value());
+          } else {
+            poFeature->SetFieldNull(attr_id_map[name]);
+          }
         } else if (auto vec = attributes.get_if<float>(name)) {
-          poFeature->SetField(attr_id_map[name], (*vec)[i]);
+          if ((*vec)[i].has_value()) {
+            poFeature->SetField(attr_id_map[name], (*vec)[i].value());
+          } else {
+            poFeature->SetFieldNull(attr_id_map[name]);
+          }
         } else if (auto vec = attributes.get_if<int>(name)) {
-          poFeature->SetField(attr_id_map[name], (*vec)[i]);
+          if ((*vec)[i].has_value()) {
+            poFeature->SetField(attr_id_map[name], (*vec)[i].value());
+          } else {
+            poFeature->SetFieldNull(attr_id_map[name]);
+          }
         } else if (auto vec = attributes.get_if<std::string>(name)) {
-          poFeature->SetField(attr_id_map[name], (*vec)[i].c_str());
+          if ((*vec)[i].has_value()) {
+            poFeature->SetField(attr_id_map[name], (*vec)[i].value().c_str());
+          } else {
+            poFeature->SetFieldNull(attr_id_map[name]);
+          }
         } else if (auto vec = attributes.get_if<Date>(name)) {
-          poFeature->SetField(attr_id_map[name], (*vec)[i].year, (*vec)[i].month, (*vec)[i].day);
+          if ((*vec)[i].has_value()) {
+            poFeature->SetField(attr_id_map[name], (*vec)[i].value().year, (*vec)[i].value().month, (*vec)[i].value().day);
+          } else {
+            poFeature->SetFieldNull(attr_id_map[name]);
+          }
         } else if (auto vec = attributes.get_if<Time>(name)) {
-          poFeature->SetField(attr_id_map[name], 0, 0, 0, (*vec)[i].hour, (*vec)[i].minute, (*vec)[i].second, (*vec)[i].timeZone);
+          if ((*vec)[i].has_value()) {
+            poFeature->SetField(attr_id_map[name], 0, 0, 0, (*vec)[i].value().hour, (*vec)[i].value().minute, (*vec)[i].value().second, (*vec)[i].value().timeZone);
+          } else {
+            poFeature->SetFieldNull(attr_id_map[name]);
+          }
         } else if (auto vec = attributes.get_if<DateTime>(name)) {
-          poFeature->SetField(attr_id_map[name], (*vec)[i].date.year, (*vec)[i].date.month, (*vec)[i].date.day, (*vec)[i].time.hour, (*vec)[i].time.minute, (*vec)[i].time.second, (*vec)[i].time.timeZone);
+          if ((*vec)[i].has_value()) {
+            poFeature->SetField(attr_id_map[name], (*vec)[i].value().date.year, (*vec)[i].value().date.month, (*vec)[i].value().date.day, (*vec)[i].value().time.hour, (*vec)[i].value().time.minute, (*vec)[i].value().time.second, (*vec)[i].value().time.timeZone);
+          } else {
+            poFeature->SetFieldNull(attr_id_map[name]);
+          }
         }
       }
 
