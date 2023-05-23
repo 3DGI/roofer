@@ -25,6 +25,7 @@
 #include <filesystem>
 
 #include <ogrsf_frmts.h>
+#include "spdlog/spdlog.h"
 
 namespace fs = std::filesystem;
 
@@ -171,7 +172,7 @@ class VectorReaderOGR : public VectorReaderInterface {
   void readPolygons(std::vector<LinearRing>& polygons, AttributeVecMap* attributes) override
   {
     layer_count = poDS->GetLayerCount();
-    std::cout << "Layer count: " << layer_count << "\n";
+    spdlog::info("Layer count: {}", layer_count);
     OGRLayer *poLayer;
     
     poLayer = poDS->GetLayerByName( layer_name_.c_str() );
@@ -188,10 +189,10 @@ class VectorReaderOGR : public VectorReaderInterface {
       throw(rooferException("Could not get the selected layer "));
 
 
-    std::cout << "Layer '" << poLayer->GetName() << "' feature count: " << poLayer->GetFeatureCount() << "\n";
+    spdlog::info("Layer '{}' feature count: {}", poLayer->GetName(), poLayer->GetFeatureCount());
     auto geometry_type = poLayer->GetGeomType();
     auto geometry_type_name = OGRGeometryTypeToName(geometry_type);
-    std::cout << "Layer geometry type: " << geometry_type_name << "\n";
+    spdlog::info("Layer geometry type: {}", geometry_type_name);
 
     auto layer_def = poLayer->GetLayerDefn();
     auto field_count = layer_def->GetFieldCount();
@@ -339,7 +340,7 @@ class VectorReaderOGR : public VectorReaderInterface {
     // else 
     if (polygons.size() > 0)
     {
-      std::cout << "pushed " << polygons.size() << " linear_ring features...\n";
+      // std::cout << "pushed " << polygons.size() << " linear_ring features...\n";
     }
   }
 };
