@@ -271,7 +271,7 @@ int main(int argc, const char * argv[]) {
       roofer::PointCloudSelectExplanation explanation;
       selected = roofer::selectPointCloud(candidates, explanation);
       if (!selected) {
-        spdlog::info("Did not find suitable point cloud for footprint idx: {}. Skipping configuration", bid);
+        // spdlog::info("Did not find suitable point cloud for footprint idx: {}. Skipping configuration", bid);
         continue ;
       }
       if (explanation == roofer::PointCloudSelectExplanation::BEST_SUFFICIENT )
@@ -284,7 +284,7 @@ int main(int argc, const char * argv[]) {
       pc_select.push_back("NA");
     }
     // TODO: Compare PC with year of construction of footprint if available
-    if (selected) spdlog::info("Selecting pointcloud: {}", input_pointclouds[selected->index].name);
+    // if (selected) spdlog::info("Selecting pointcloud: {}", input_pointclouds[selected->index].name);
     
     {
       // fs::create_directories(fs::path(fname).parent_path());

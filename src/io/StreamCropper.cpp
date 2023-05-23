@@ -301,16 +301,16 @@ void getOgcWkt(LASheader* lasheader, std::string& wkt) {
   {
       if (lasheader->vlrs[i].record_id == 2111) // OGC MATH TRANSFORM WKT
       {
-        std::cout << "Found and ignored: OGC MATH TRANSFORM WKT\n";
+        spdlog::info("Found and ignored: OGC MATH TRANSFORM WKT");
       }
       else if (lasheader->vlrs[i].record_id == 2112) // OGC COORDINATE SYSTEM WKT
       {
-        std::cout << "Found: OGC COORDINATE SYSTEM WKT\n";
+        spdlog::info("Found: OGC COORDINATE SYSTEM WKT");
         wkt = (char *)(lasheader->vlrs[i].data);
       }
       else if (lasheader->vlrs[i].record_id == 34735) // GeoKeyDirectoryTag
       {
-        std::cout << "Found and ignored: GeoKeyDirectoryTag\n";
+        spdlog::info("Found and ignored: GeoKeyDirectoryTag");
       }
   }
 
@@ -320,17 +320,17 @@ void getOgcWkt(LASheader* lasheader, std::string& wkt) {
     {
       if (lasheader->evlrs[i].record_id == 2111) // OGC MATH TRANSFORM WKT
       {
-        std::cout << "Found and ignored: OGC MATH TRANSFORM WKT\n";
+        spdlog::info("Found and ignored: OGC MATH TRANSFORM WKT");
 
       }
       else if (lasheader->evlrs[i].record_id == 2112) // OGC COORDINATE SYSTEM WKT
       {
-        std::cout << "Found: OGC COORDINATE SYSTEM WKT\n";
+        spdlog::info("Found: OGC COORDINATE SYSTEM WKT");
         wkt = (char *)(lasheader->evlrs[i].data);
       }
     }
   }
-  std::cout << wkt << std::endl;
+  // std::cout << wkt << std::endl;
 };
 
 struct PointCloudCropper : public PointCloudCropperInterface {
@@ -387,11 +387,11 @@ struct PointCloudCropper : public PointCloudCropperInterface {
         }
       }
     } else {
-      std::cout << "filepaths_ is not a directory, assuming a list of LAS files" << std::endl;
+      // std::cout << "filepaths_ is not a directory, assuming a list of LAS files" << std::endl;
       for (std::string filepath : split_string(filepaths, " "))
       {
         if (fs::exists(filepath)) lasfiles.push_back(filepath);
-        else std::cout << filepath << " does not exist" << std::endl;
+        else spdlog::info ("{} does not exist", filepath);
       }
     }
 
@@ -410,7 +410,7 @@ struct PointCloudCropper : public PointCloudCropperInterface {
       }
       
       if (!lasreader){
-        std::cout << "cannot read las file: " << lasfile << "\n";
+        else spdlog::info ("cannot read las file: {}", lasfile);
         continue;
       }
 
@@ -427,7 +427,7 @@ struct PointCloudCropper : public PointCloudCropperInterface {
       ));
 
       if(!file_bbox.intersects(pip_collector.completearea_bb)){
-        std::cout << "no intersection footprints with las file: " << lasfile << "\n";
+        else spdlog::info ("no intersection footprints with las file: {}", lasfile);
         continue;
       }
 

@@ -125,7 +125,7 @@ class VectorWriterOGR : public VectorWriterInterface {
       }
       if (create_directories_) {
         if(fs::create_directories(fpath.parent_path()))
-          spdlog::info("Creating directory {}", connstr);
+          // spdlog::info("Creating directory {}", connstr);
       }
     }
 
@@ -141,7 +141,7 @@ class VectorWriterOGR : public VectorWriterInterface {
       throw(rooferException("Starting database transaction failed.\n"));
     }
 
-    spdlog::info("Using driver {}", dataSource->GetDriverName());
+    // spdlog::info("Using driver {}", dataSource->GetDriverName());
 
     OGRwkbGeometryType wkbType;
     // if (geom_term.is_connected_type(typeid(LinearRing))) {
@@ -180,7 +180,7 @@ class VectorWriterOGR : public VectorWriterInterface {
 
     auto total_size = polygons.size();
     auto write_size = end - begin;
-    spdlog::info("creating {} geometry features", write_size);
+    // spdlog::info("creating {} geometry features", write_size);
 
     auto CRS = srs;
     if (layer == nullptr) {
