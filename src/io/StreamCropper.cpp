@@ -376,7 +376,7 @@ struct PointCloudCropper : public PointCloudCropperInterface {
 
     std::vector<std::string> lasfiles;
     std::vector<std::string> filepath_parts = split_string(filepaths, " ");
-    if ( filepath_parts.size()==1 )
+    if ( filepath_parts.size()==1 ) {
       if(fs::is_directory(filepaths)) {
         for(auto& p: fs::directory_iterator(filepaths)) {
           auto ext = p.path().extension();
