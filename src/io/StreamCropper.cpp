@@ -375,20 +375,26 @@ struct PointCloudCropper : public PointCloudCropperInterface {
     auto filepaths = source;
 
     std::vector<std::string> lasfiles;
-    if(fs::is_directory(filepaths)) {
-      for(auto& p: fs::directory_iterator(filepaths)) {
-        auto ext = p.path().extension();
-        if (ext == ".las" ||
-            ext == ".LAS" ||
-            ext == ".laz" ||
-            ext == ".LAZ")
-        {
-          lasfiles.push_back(p.path().string());
+    std::vector<std::string> filepath_parts = split_string(filepaths, " ");
+    if ( filepath_parts.size()==1 )
+      if(fs::is_directory(filepaths)) {
+        for(auto& p: fs::directory_iterator(filepaths)) {
+          auto ext = p.path().extension();
+          if (ext == ".las" ||
+              ext == ".LAS" ||
+              ext == ".laz" ||
+              ext == ".LAZ")
+          {
+            lasfiles.push_back(p.path().string());
+          }
         }
+      } else {
+        if (fs::exists(filepaths)) lasfiles.push_back(filepaths);
+        else spdlog::info ("{} does not exist", filepaths);
       }
     } else {
-      // std::cout << "filepaths_ is not a directory, assuming a list of LAS files" << std::endl;
-      for (std::string filepath : split_string(filepaths, " "))
+      // std::cout << "filepaths_ is not a directory or file, assuming a list of LAS files" << std::endl;
+      for (std::string filepath : filepath_parts)
       {
         if (fs::exists(filepath)) lasfiles.push_back(filepath);
         else spdlog::info ("{} does not exist", filepath);
