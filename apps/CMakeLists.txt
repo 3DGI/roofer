@@ -7,6 +7,7 @@ set_target_properties(
 )
 target_link_libraries(crop PRIVATE rooferlib)
 
+install(TARGETS crop DESTINATION bin)
 
 # add polyscope
 if(${RF_BUILD_GUI})

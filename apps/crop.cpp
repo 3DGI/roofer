@@ -30,11 +30,14 @@ void print_help(std::string program_name) {
   // see http://docopt.org/
   fmt::print("Usage:\n");
   fmt::print("   {}", program_name);
-  fmt::print(" [-c <file>]\n");
-  // std::cout << "\n";
+  fmt::print(" -c <file>\n");
   fmt::print("Options:\n");
   // std::cout << "   -v, --version                Print version information\n";
+  fmt::print("   -h, --help                   Show this help message\n");
   fmt::print("   -c <file>, --config <file>   Config file\n");
+  fmt::print("   -r, --rasters                Output rasterised building pointclouds\n");
+  fmt::print("   -m, --metadata               Output metadata.json file\n");
+  fmt::print("   -a, --all                    Output files for each candidate point cloud instead of only the optimal candidate\n");
 }
 
 struct InputPointcloud {
@@ -62,9 +65,14 @@ int main(int argc, const char * argv[]) {
   // std::string path_pointcloud = "/mnt/Data/LocalData/Kadaster/true_ortho_experimenten/2021_LAZ_Leiden_Almere/DenHaag/83000_455000.laz";
   std::vector<InputPointcloud> input_pointclouds;
 
-  bool output_all = cmdl[{"-a", "--output-all"}];
+  bool output_all = cmdl[{"-a", "--all"}];
   bool write_rasters = cmdl[{"-r", "--rasters"}];
   bool write_metadata = cmdl[{"-m", "--metadata"}];
+
+  if (cmdl[{"-h", "--help"}]) {
+    print_help(program_name);
+    return EXIT_SUCCESS;
+  }
 
   // TOML config parsing
   // pointclouds, footprints
@@ -417,5 +425,5 @@ int main(int argc, const char * argv[]) {
     ofs << s;
     ofs.close();
   }
-  return 0;
+  return EXIT_SUCCESS;;
 }
