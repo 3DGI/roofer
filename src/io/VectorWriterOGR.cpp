@@ -124,7 +124,7 @@ class VectorWriterOGR : public VectorWriterInterface {
         }
       }
       if (create_directories_) {
-        if(fs::create_directories(fpath.parent_path()))
+        fs::create_directories(fpath.parent_path());
           // spdlog::info("Creating directory {}", connstr);
       }
     }

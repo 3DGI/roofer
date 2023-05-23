@@ -410,7 +410,7 @@ struct PointCloudCropper : public PointCloudCropperInterface {
       }
       
       if (!lasreader){
-        else spdlog::info ("cannot read las file: {}", lasfile);
+        spdlog::info ("cannot read las file: {}", lasfile);
         continue;
       }
 
@@ -427,7 +427,7 @@ struct PointCloudCropper : public PointCloudCropperInterface {
       ));
 
       if(!file_bbox.intersects(pip_collector.completearea_bb)){
-        else spdlog::info ("no intersection footprints with las file: {}", lasfile);
+        spdlog::info ("no intersection footprints with las file: {}", lasfile);
         continue;
       }
 
