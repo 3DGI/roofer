@@ -34,6 +34,7 @@ void print_help(std::string program_name) {
   fmt::print("Options:\n");
   // std::cout << "   -v, --version                Print version information\n";
   fmt::print("   -h, --help                   Show this help message\n");
+  fmt::print("   -v, --verbose                Be more verbose\n");
   fmt::print("   -c <file>, --config <file>   Config file\n");
   fmt::print("   -r, --rasters                Output rasterised building pointclouds\n");
   fmt::print("   -m, --metadata               Output metadata.json file\n");
@@ -64,10 +65,17 @@ int main(int argc, const char * argv[]) {
   bool output_all = cmdl[{"-a", "--all"}];
   bool write_rasters = cmdl[{"-r", "--rasters"}];
   bool write_metadata = cmdl[{"-m", "--metadata"}];
+  bool verbose = cmdl[{"-v", "--verbose"}];
 
   if (cmdl[{"-h", "--help"}]) {
     print_help(program_name);
     return EXIT_SUCCESS;
+  }
+
+  if (verbose) {
+    spdlog::set_level(spdlog::level::info);
+  } else {
+    spdlog::set_level(spdlog::level::warn);
   }
 
   std::vector<InputPointcloud> input_pointclouds;
