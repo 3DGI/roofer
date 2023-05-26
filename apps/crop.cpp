@@ -322,13 +322,21 @@ int main(int argc, const char * argv[]) {
           input_pointclouds[j].building_clouds[i],
           pc_path
         );
-
+        
+        // Correct ground height for offset, NB this ignores crs transformation
+        double h_ground = input_pointclouds[j].ground_elevations[i] + (*pj->data_offset)[2];
+        
         auto gf_config = toml::table {
           {"INPUT_FOOTPRINT", fp_path},
           {"INPUT_POINTCLOUD", pc_path},
           {"BID", bid},
-          {"GROUND_ELEVATION", input_pointclouds[j].ground_elevations[i]},
+          {"GROUND_ELEVATION", h_ground},
           {"OUTPUT_JSONL", jsonl_path },
+
+          {"GF_PROCESS_OFFSET_OVERRIDE", true},
+          {"GF_PROCESS_OFFSET_X", (*pj->data_offset)[0]},
+          {"GF_PROCESS_OFFSET_Y", (*pj->data_offset)[1]},
+          {"GF_PROCESS_OFFSET_Z", (*pj->data_offset)[2]},
 
           {"U_SOURCE", ipc.name},
           {"U_SURVEY_DATE", std::to_string(ipc.date)},
