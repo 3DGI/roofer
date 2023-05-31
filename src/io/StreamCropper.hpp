@@ -4,6 +4,18 @@
 #include <memory>
 
 namespace roofer {
+  struct PointCloudCropperConfig {
+    std::string filepaths_ = "";
+    float cellsize = 50.0;
+    float buffer = 1.0;
+    float ground_percentile=0.05;
+    float max_density_delta=0.05;
+    float coverage_threshold=2.0;
+    int ground_class = 2;
+    int building_class = 6;
+    bool clear_if_insufficient = true;
+    std::string wkt_="";
+  };
   struct PointCloudCropperInterface {
 
     projHelperInterface& pjHelper;
@@ -15,7 +27,8 @@ namespace roofer {
       std::vector<LinearRing>& polygons,
       std::vector<LinearRing>& buf_polygons,
       std::vector<PointCollection>& point_clouds,
-      vec1f& ground_elevations
+      vec1f& ground_elevations,
+      PointCloudCropperConfig cfg = PointCloudCropperConfig{}
     ) = 0;
   };
 

@@ -38,6 +38,7 @@ void print_help(std::string program_name) {
   fmt::print("   -c <file>, --config <file>   Config file\n");
   fmt::print("   -r, --rasters                Output rasterised building pointclouds\n");
   fmt::print("   -m, --metadata               Output metadata.json file\n");
+  fmt::print("   -i, --index                  Output index.gpkg file\n");
   fmt::print("   -a, --all                    Output files for each candidate point cloud instead of only the optimal candidate\n");
 }
 
@@ -46,7 +47,11 @@ struct InputPointcloud {
   std::string name;
   int quality;
   int date;
+  int bld_class = 6;
+  int grnd_class = 2;
   roofer::vec1f nodata_radii;
+  roofer::vec1f data_areas;
+  roofer::vec1f pt_densities;
   std::vector<roofer::PointCollection> building_clouds;
   std::vector<roofer::ImageMap> building_rasters;
   roofer::vec1f ground_elevations;
@@ -65,6 +70,7 @@ int main(int argc, const char * argv[]) {
   bool output_all = cmdl[{"-a", "--all"}];
   bool write_rasters = cmdl[{"-r", "--rasters"}];
   bool write_metadata = cmdl[{"-m", "--metadata"}];
+  bool write_index = cmdl[{"-i", "--index"}];
   bool verbose = cmdl[{"-v", "--verbose"}];
 
   if (cmdl[{"-h", "--help"}]) {
@@ -125,9 +131,22 @@ int main(int argc, const char * argv[]) {
         toml::table * tb = el.as_table();
         InputPointcloud pc;
         
-        pc.name = *(*tb)["name"].value<std::string>();
-        pc.quality = *(*tb)["quality"].value<int>();
-        pc.date = *(*tb)["date"].value<int>();
+        if( auto n = (*tb)["name"].value<std::string>(); n.has_value() ){
+            pc.name = *n;
+        }
+        if( auto n = (*tb)["quality"].value<int>(); n.has_value() ){
+            pc.quality = *n;
+        }
+        if( auto n = (*tb)["date"].value<int>(); n.has_value() ){
+            pc.date = *n;
+        }
+
+        if( auto n = (*tb)["building_class"].value<int>(); n.has_value() ){
+            pc.bld_class = *n;
+        }
+        if( auto n = (*tb)["ground_class"].value<int>(); n.has_value() ){
+            pc.grnd_class = *n;
+        }
 
         auto tml_path = (*tb)["path"].value<std::string>();
         if (tml_path.has_value()) {
@@ -210,7 +229,11 @@ int main(int argc, const char * argv[]) {
       footprints,
       buffered_footprints,
       ipc.building_clouds,
-      ipc.ground_elevations
+      ipc.ground_elevations,
+      {
+        .ground_class = ipc.grnd_class, 
+        .building_class = ipc.bld_class
+      }
     );
   }
 
@@ -236,6 +259,13 @@ int main(int argc, const char * argv[]) {
     }
   }
 
+  // add nodata radii as footprint attributes
+  for (auto& ipc : input_pointclouds) {
+    auto& r_nodata = attributes.insert_vec<float>("r_nodata_"+ipc.name);
+    for (unsigned i=0; i<footprints.size(); ++i) {
+      r_nodata.push_back(ipc.nodata_radii[i]);
+    }
+  }
   
   // write out geoflow config + pointcloud / fp for each building
   spdlog::info("Selecting and writing pointclouds");
@@ -290,6 +320,7 @@ int main(int argc, const char * argv[]) {
         pc_select.push_back("BAD_COVERAGE");
     } else {
       pc_select.push_back("NA");
+      selected = &candidates[0];
     }
     // TODO: Compare PC with year of construction of footprint if available
     // if (selected) spdlog::info("Selecting pointcloud: {}", input_pointclouds[selected->index].name);
@@ -383,7 +414,7 @@ int main(int argc, const char * argv[]) {
   }
 
   // Write index output
-  {
+  if (write_index) {
     std::string index_file = fmt::format(index_file_spec, fmt::arg("path", output_path));
     VectorWriter->writePolygons(index_file, footprints, attributes);
   }

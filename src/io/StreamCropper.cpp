@@ -334,16 +334,6 @@ void getOgcWkt(LASheader* lasheader, std::string& wkt) {
 };
 
 struct PointCloudCropper : public PointCloudCropperInterface {
-  std::string filepaths_ = "";
-  float cellsize = 50.0;
-  float buffer = 1.0;
-  float ground_percentile=0.05;
-  float max_density_delta=0.05;
-  float coverage_threshold=2.0;
-  int ground_class = 2;
-  int building_class = 6;
-  bool clear_if_insufficient = true;
-  std::string wkt_="";
 
   using PointCloudCropperInterface::PointCloudCropperInterface;
 
@@ -352,7 +342,8 @@ struct PointCloudCropper : public PointCloudCropperInterface {
     std::vector<LinearRing>& polygons,
     std::vector<LinearRing>& buf_polygons,
     std::vector<PointCollection>& point_clouds,
-    vec1f& ground_elevations
+    vec1f& ground_elevations,
+    PointCloudCropperConfig cfg
   ) {
     // vec1f ground_elevations;
     vec1f poly_areas;
@@ -366,10 +357,10 @@ struct PointCloudCropper : public PointCloudCropperInterface {
       buf_polygons, 
       point_clouds, 
       ground_elevations, 
-      cellsize, 
-      buffer, 
-      ground_class, 
-      building_class
+      cfg.cellsize, 
+      cfg.buffer, 
+      cfg.ground_class, 
+      cfg.building_class
     };
 
     auto filepaths = source;
@@ -407,7 +398,7 @@ struct PointCloudCropper : public PointCloudCropperInterface {
       lasreadopener.set_file_name(lasfile.c_str());
       LASreader* lasreader = lasreadopener.open();
 
-      std::string wkt = wkt_;
+      std::string wkt = cfg.wkt_;
       if(wkt.size()==0) {
         getOgcWkt(&lasreader->header, wkt);
       }
@@ -470,10 +461,10 @@ struct PointCloudCropper : public PointCloudCropperInterface {
     }
 
     pip_collector.do_post_process(
-      ground_percentile, 
-      max_density_delta, 
-      coverage_threshold, 
-      clear_if_insufficient,
+      cfg.ground_percentile, 
+      cfg.max_density_delta, 
+      cfg.coverage_threshold, 
+      cfg.clear_if_insufficient,
       poly_areas, 
       poly_pt_counts_bld, 
       poly_pt_counts_grd, 
