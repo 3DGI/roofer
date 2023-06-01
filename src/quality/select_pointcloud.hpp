@@ -21,8 +21,10 @@ namespace roofer {
 
   struct selectPointCloudConfig {
     // Thresholds determined from AHN3 Leiden
+    // total % of no data area inside footprint 
     float threshold_nodata = 6.0;
-    float threshold_maxcircle = 4.7;
+    // max allowed nodata radius
+    float threshold_maxcircle = 0.5;
     // The >=50% change was determined by analyzing the data.
     // See the Leiden, percent_diff_AHN3_2020 plot.
     float threshold_mutation_fraction = 0.5;

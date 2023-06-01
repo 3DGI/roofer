@@ -315,7 +315,7 @@ int main(int argc, const char * argv[]) {
   spdlog::info("Selecting and writing pointclouds");
   auto bid_vec = attributes.get_if<std::string>(building_bid_attribute);
   auto& pc_select = attributes.insert_vec<std::string>("pc_select");
-  // auto& pc_source = attributes.insert_vec<std::string>("pc_source");
+  auto& pc_source = attributes.insert_vec<std::string>("pc_source");
   std::unordered_map<std::string, roofer::vec1s> jsonl_paths;
   std::string bid;
   bool only_write_selected = !output_all;
@@ -352,20 +352,21 @@ int main(int argc, const char * argv[]) {
     if(input_pointclouds.size()>1) {
       roofer::PointCloudSelectExplanation explanation;
       selected = roofer::selectPointCloud(candidates, explanation, select_pc_cfg);
-      if (!selected) {
-        // spdlog::info("Did not find suitable point cloud for footprint idx: {}. Skipping configuration", bid);
-        continue ;
-      }
       if (explanation == roofer::PointCloudSelectExplanation::BEST_SUFFICIENT )
         pc_select.push_back("BEST_SUFFICIENT");
       else if (explanation == roofer::PointCloudSelectExplanation::LATEST_SUFFICIENT )
         pc_select.push_back("LATEST_SUFFICIENT");
       else if (explanation == roofer::PointCloudSelectExplanation::BAD_COVERAGE )
         pc_select.push_back("BAD_COVERAGE");
+      if (!selected) {
+        // spdlog::info("Did not find suitable point cloud for footprint idx: {}. Skipping configuration", bid);
+        continue ;
+      }
     } else {
       pc_select.push_back("NA");
       selected = &candidates[0];
     }
+    pc_source.push_back(selected->name);
     // TODO: Compare PC with year of construction of footprint if available
     // if (selected) spdlog::info("Selecting pointcloud: {}", input_pointclouds[selected->index].name);
     

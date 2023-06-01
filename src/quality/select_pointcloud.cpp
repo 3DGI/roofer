@@ -141,8 +141,8 @@ namespace roofer {
                               float threshold_maxcircle) {
     float nodata = roofer::computeNoDataFraction(pc->image_bundle);
     bool nodata_good = nodata <= threshold_nodata;
-    float nodata_maxcircle = computeNoDataMaxCircleFraction(pc);
-    bool maxcircle_good = nodata_maxcircle <= threshold_maxcircle;
+    // float nodata_maxcircle = computeNoDataMaxCircleFraction(pc);
+    bool maxcircle_good = pc->nodata_radius <= threshold_maxcircle;
     return nodata_good && maxcircle_good;
   }
 
