@@ -24,6 +24,7 @@
 #include <sstream>
 #include <string>
 #include <unordered_map>
+#include <vector>
 namespace fs = std::filesystem;
 
 void print_help(std::string program_name) {
@@ -50,8 +51,10 @@ struct InputPointcloud {
   int bld_class = 6;
   int grnd_class = 2;
   roofer::vec1f nodata_radii;
-  roofer::vec1f data_areas;
+  roofer::vec1f nodata_fractions;
   roofer::vec1f pt_densities;
+  roofer::vec1b is_mutated;
+  std::vector<roofer::LinearRing> nodata_circles;
   std::vector<roofer::PointCollection> building_clouds;
   std::vector<roofer::ImageMap> building_rasters;
   roofer::vec1f ground_elevations;
@@ -79,7 +82,7 @@ int main(int argc, const char * argv[]) {
   }
 
   if (verbose) {
-    spdlog::set_level(spdlog::level::info);
+    spdlog::set_level(spdlog::level::debug);
   } else {
     spdlog::set_level(spdlog::level::warn);
   }
@@ -239,31 +242,72 @@ int main(int argc, const char * argv[]) {
 
   // compute nodata maxcircle
   // compute rasters
+  const unsigned N_fp = footprints.size();
   for (auto& ipc : input_pointclouds) {
     spdlog::info("Analysing pointcloud {}...", ipc.name);
-    unsigned N = ipc.building_clouds.size();
-    ipc.nodata_radii.resize(N);
-    ipc.building_rasters.resize(N);
-    for(unsigned i=0; i<N; ++i) {
+    ipc.nodata_radii.resize(N_fp);
+    ipc.building_rasters.resize(N_fp);
+    ipc.nodata_fractions.resize(N_fp);
+    ipc.pt_densities.resize(N_fp);
+    if (write_index) ipc.nodata_circles.resize(N_fp);
+
+    // auto& r_nodata = attributes.insert_vec<float>("r_nodata_"+ipc.name);
+    roofer::arr2f nodata_c;
+    for(unsigned i=0; i<N_fp; ++i) {
       roofer::compute_nodata_circle(
         ipc.building_clouds[i],
         footprints[i],
-        &ipc.nodata_radii[i]
-      );      
-      // ipc.nodata_radii[i]=0;
+        &ipc.nodata_radii[i],
+        &nodata_c
+      );
+      if (write_index) {
+        roofer::draw_circle(
+          ipc.nodata_circles[i],
+          ipc.nodata_radii[i],
+          nodata_c
+        );
+      }
+      // r_nodata.push_back(ipc.nodata_radii[i]);
+      
       roofer::RasterisePointcloud(
         ipc.building_clouds[i],
         footprints[i],
         ipc.building_rasters[i]
       );
+
+      ipc.nodata_fractions[i] = roofer::computeNoDataFraction(ipc.building_rasters[i]);
+      ipc.pt_densities[i] = roofer::computePointDensity(ipc.building_rasters[i]);
     }
   }
 
-  // add nodata radii as footprint attributes
+  // add raster stats attributes to footprints
   for (auto& ipc : input_pointclouds) {
-    auto& r_nodata = attributes.insert_vec<float>("r_nodata_"+ipc.name);
-    for (unsigned i=0; i<footprints.size(); ++i) {
-      r_nodata.push_back(ipc.nodata_radii[i]);
+    auto& nodata_r = attributes.insert_vec<float>("nodata_r_"+ipc.name);
+    auto& nodata_frac = attributes.insert_vec<float>("nodata_frac_"+ipc.name);
+    auto& pt_density = attributes.insert_vec<float>("pt_density_"+ipc.name);
+    nodata_r.reserve(N_fp);
+    nodata_frac.reserve(N_fp);
+    pt_density.reserve(N_fp);
+    for (unsigned i=0; i<N_fp; ++i) {
+      nodata_r.push_back(ipc.nodata_radii[i]);
+      nodata_frac.push_back(ipc.nodata_fractions[i]);
+      pt_density.push_back(ipc.pt_densities[i]);
+    }
+  }
+
+  roofer::selectPointCloudConfig select_pc_cfg;
+  if (input_pointclouds.size() > 1){
+    auto& is_mutated = attributes.insert_vec<bool>(
+      "is_mutated_"+input_pointclouds[0].name+"_"+input_pointclouds[1].name
+    );
+    is_mutated.reserve(N_fp);
+    for (unsigned i=0; i<N_fp; ++i) {
+      is_mutated[i] = roofer::isMutated(
+        input_pointclouds[0].building_rasters[i], 
+        input_pointclouds[1].building_rasters[i], 
+        select_pc_cfg.threshold_mutation_fraction, 
+        select_pc_cfg.threshold_mutation_difference
+      );
     }
   }
   
@@ -275,7 +319,7 @@ int main(int argc, const char * argv[]) {
   std::unordered_map<std::string, roofer::vec1s> jsonl_paths;
   std::string bid;
   bool only_write_selected = !output_all;
-  for (unsigned i=0; i<footprints.size(); ++i) {
+  for (unsigned i=0; i<N_fp; ++i) {
 
     if (bid_vec) {
       bid = (*bid_vec)[i].value();
@@ -307,7 +351,7 @@ int main(int argc, const char * argv[]) {
     const roofer::CandidatePointCloud* selected = nullptr;
     if(input_pointclouds.size()>1) {
       roofer::PointCloudSelectExplanation explanation;
-      selected = roofer::selectPointCloud(candidates, explanation);
+      selected = roofer::selectPointCloud(candidates, explanation, select_pc_cfg);
       if (!selected) {
         // spdlog::info("Did not find suitable point cloud for footprint idx: {}. Skipping configuration", bid);
         continue ;
@@ -417,6 +461,9 @@ int main(int argc, const char * argv[]) {
   if (write_index) {
     std::string index_file = fmt::format(index_file_spec, fmt::arg("path", output_path));
     VectorWriter->writePolygons(index_file, footprints, attributes);
+    for (auto& ipc : input_pointclouds) {
+      VectorWriter->writePolygons(index_file+"_"+ipc.name+"_nodatacircle.gpkg", ipc.nodata_circles, attributes);
+    }
   }
 
   // write the txt containing paths to all jsonl features to be written by reconstruct

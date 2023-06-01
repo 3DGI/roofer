@@ -4,6 +4,9 @@
 #include "PointcloudRasteriser.hpp"
 
 #include <numeric>
+#include <algorithm>
+
+#include "spdlog/spdlog.h"
 
 namespace roofer {
 
@@ -123,6 +126,110 @@ namespace roofer {
         }
       }
     }
+  }
+
+  float computePointDensity(const ImageMap& pc) {
+    const auto& fp = pc.at("fp").array;
+    const auto& cnt = pc.at("cnt").array;
+    const auto& cnt_nodata = pc.at("cnt").nodataval;
+    auto& cellsize = pc.at("fp").cellsize;
+    size_t fp_cnt{0}, pt_cnt{0};
+    for (size_t i=0; i<fp.size(); ++i) {
+      if( fp[i] != 0 && cnt[i] != cnt_nodata) {
+        ++fp_cnt;
+        pt_cnt += cnt[i];
+      }
+    }
+    // spdlog::debug("pt_cnt: {}, fp_cnt: {}, cellsize: {}", pt_cnt, fp_cnt, cellsize);
+    if (pt_cnt == 0) {
+      return 0;
+    } else {
+      auto cell_area = cellsize * cellsize;
+      return float(pt_cnt) / float(fp_cnt * cell_area);
+    }
+  }
+
+  float computeNoDataFraction(const ImageMap& pc) {
+    auto& fp = pc.at("fp").array;
+    auto& cnt = pc.at("cnt").array;
+    auto& cnt_nodata = pc.at("cnt").nodataval;
+    size_t fp_cnt{0}, data_cnt{0};
+    for (size_t i=0; i<fp.size(); ++i) {
+      if( fp[i] != 0 ) {
+        ++fp_cnt;
+        if( cnt[i] != cnt_nodata ) {
+          ++data_cnt;
+        }
+      }
+    }
+    if (data_cnt == 0) {
+      return 0;
+    } else {
+      double data_frac = double(data_cnt) / double(fp_cnt);
+      return float(1 - data_frac);
+    }
+  }
+
+  std::vector<bool> computeMask(const std::vector<float>& image_array,
+                                const float& nodataval) {
+    std::vector<bool> mask;
+    mask.reserve(image_array.size());
+    for (const auto& cell : image_array) {
+      if (cell == nodataval) {
+        mask.push_back(false);
+      } else {
+        mask.push_back(true);
+      }
+    }
+    return mask;
+  }
+
+  bool isMutated(const ImageMap& a,
+                 const ImageMap& b,
+                 const float& threshold_mutation_fraction,
+                 const float& threshold_mutation_difference) {
+    auto footprint_mask =
+        computeMask(a.at("fp").array, 0);
+    auto data_mask_a =
+        computeMask(a.at("max").array, a.at("max").nodataval);
+    auto data_mask_b =
+        computeMask(b.at("max").array, b.at("max").nodataval);
+
+    std::vector<bool> all_mask;
+    all_mask.resize(footprint_mask.size());
+    std::transform(data_mask_a.begin(), data_mask_a.end(), data_mask_b.begin(),
+                   all_mask.begin(), std::multiplies<>());
+    std::transform(all_mask.begin(), all_mask.end(), footprint_mask.begin(),
+                   all_mask.begin(), std::multiplies<>());
+
+    std::vector<float> all_mask_on_a;
+    all_mask_on_a.resize(all_mask.size());
+    std::transform(a.at("max").array.begin(),
+                   a.at("max").array.end(), all_mask.begin(),
+                   all_mask_on_a.begin(), std::multiplies<>());
+    std::vector<float> all_mask_on_b;
+    all_mask_on_b.resize(all_mask.size());
+    std::transform(b.at("max").array.begin(),
+                   b.at("max").array.end(), all_mask.begin(),
+                   all_mask_on_b.begin(), std::multiplies<>());
+
+    // The cells are marked 'true' when there is a change between the two
+    // point clouds.
+    std::vector<bool> change_mask;
+    change_mask.resize(all_mask_on_a.size());
+    std::transform(all_mask_on_a.begin(), all_mask_on_a.end(),
+                   all_mask_on_b.begin(), change_mask.begin(), 
+                   [ threshold_mutation_difference ] (const float& a, const float& b) {
+                    return std::abs(b - a) > threshold_mutation_difference;
+                   });
+    // spdlog::debug("change_mask size: {}, footprint_mask size: {}", change_mask.size(), footprint_mask.size());
+    int footprint_pixel_cnt =
+        std::accumulate(footprint_mask.begin(), footprint_mask.end(), int(0));
+    int change_pixel_cnt =
+        std::accumulate(change_mask.begin(), change_mask.end(), int(0));
+
+    // spdlog::debug("change_pixel_cnt: {}, footprint_pixel_cnt: {}", change_pixel_cnt, footprint_pixel_cnt);
+    return (change_pixel_cnt / footprint_pixel_cnt) >= threshold_mutation_fraction;
   }
 
 

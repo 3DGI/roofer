@@ -1,8 +1,8 @@
 #include "select_pointcloud.hpp"
 
-#include <algorithm>
 #include <cmath>
 #include <numeric>
+#include <algorithm>
 
 // #include "spdlog/spdlog.h"
 
@@ -32,17 +32,9 @@ namespace roofer {
                               float threshold_maxcircle);
 
   // Count the pixels that are NoData in the Image.
-  size_t countNoData(const Image& img);
-
-  float computeNoDataFraction(const CandidatePointCloud* pc);
+  // size_t countNoData(const Image& img);
 
   float computeNoDataMaxCircleFraction(const CandidatePointCloud* pc);
-
-  // Determine if the two point clouds describe the same object.
-  bool isMutated(const CandidatePointCloud* a, 
-                    const CandidatePointCloud* b, 
-                    const float& threshold_mutation_fraction,
-                    const float& threshold_mutation_difference);
 
   // Compute a boolean mask that indicates that the cell has data.
   std::vector<bool> computeMask(const std::vector<float>& image_array,
@@ -106,7 +98,7 @@ namespace roofer {
       // check if latest PC has enough coverage
       // if (roofer::hasEnoughPointCoverage(latest_suffcient, cfg.threshold_nodata,
                                         //  cfg.threshold_maxcircle)) {
-      if (roofer::isMutated(best_suffcient, latest_suffcient, cfg.threshold_mutation_fraction, cfg.threshold_mutation_difference)) {
+      if (roofer::isMutated(best_suffcient->image_bundle, latest_suffcient->image_bundle, cfg.threshold_mutation_fraction, cfg.threshold_mutation_difference)) {
         // If the two point clouds are different, that means
         // that the object has changed and the selected point
         // cloud is outdated, therefore, we have to use the
@@ -147,93 +139,11 @@ namespace roofer {
   bool hasEnoughPointCoverage(const CandidatePointCloud* pc,
                               float threshold_nodata,
                               float threshold_maxcircle) {
-    float nodata = computeNoDataFraction(pc);
+    float nodata = roofer::computeNoDataFraction(pc->image_bundle);
     bool nodata_good = nodata <= threshold_nodata;
     float nodata_maxcircle = computeNoDataMaxCircleFraction(pc);
     bool maxcircle_good = nodata_maxcircle <= threshold_maxcircle;
     return nodata_good && maxcircle_good;
-  }
-
-  bool isMutated(const CandidatePointCloud* a,
-                 const CandidatePointCloud* b,
-                 const float& threshold_mutation_fraction,
-                 const float& threshold_mutation_difference) {
-    auto footprint_mask =
-        computeMask(a->image_bundle["fp"].array, 0);
-    auto data_mask_a =
-        computeMask(a->image_bundle["max"].array, a->image_bundle["max"].nodataval);
-    auto data_mask_b =
-        computeMask(b->image_bundle["max"].array, b->image_bundle["max"].nodataval);
-
-    std::vector<bool> all_mask;
-    all_mask.resize(footprint_mask.size());
-    std::transform(data_mask_a.begin(), data_mask_a.end(), data_mask_b.begin(),
-                   all_mask.begin(), std::multiplies<>());
-    std::transform(all_mask.begin(), all_mask.end(), footprint_mask.begin(),
-                   all_mask.begin(), std::multiplies<>());
-
-    std::vector<float> all_mask_on_a;
-    all_mask_on_a.resize(all_mask.size());
-    std::transform(a->image_bundle["max"].array.begin(),
-                   a->image_bundle["max"].array.end(), all_mask.begin(),
-                   all_mask_on_a.begin(), std::multiplies<>());
-    std::vector<float> all_mask_on_b;
-    all_mask_on_b.resize(all_mask.size());
-    std::transform(b->image_bundle["max"].array.begin(),
-                   b->image_bundle["max"].array.end(), all_mask.begin(),
-                   all_mask_on_b.begin(), std::multiplies<>());
-
-    // The cells are marked 'true' when there is a change between the two
-    // point clouds.
-    std::vector<bool> change_mask;
-    change_mask.resize(all_mask_on_a.size());
-    std::transform(all_mask_on_a.begin(), all_mask_on_a.end(),
-                   all_mask_on_b.begin(), change_mask.begin(), 
-                   [ threshold_mutation_difference ] (const float& a, const float& b) {
-                    return std::abs(b - a) > threshold_mutation_difference;
-                   });
-
-    float footprint_pixel_cnt =
-        std::reduce(footprint_mask.begin(), footprint_mask.end());
-    float change_pixel_cnt =
-        std::reduce(change_mask.begin(), change_mask.end());
-
-    return (change_pixel_cnt / footprint_pixel_cnt) >= threshold_mutation_fraction;
-  }
-
-  std::vector<bool> computeMask(const std::vector<float>& image_array,
-                                const float& nodataval) {
-    std::vector<bool> mask;
-    mask.reserve(image_array.size());
-    for (const auto& cell : image_array) {
-      if (cell == nodataval) {
-        mask.push_back(false);
-      } else {
-        mask.push_back(true);
-      }
-    }
-    return mask;
-  }
-
-  float computeNoDataFraction(const CandidatePointCloud* pc) {
-    auto& fp = pc->image_bundle["fp"].array;
-    auto& cnt = pc->image_bundle["cnt"].array;
-    auto& cnt_nodata = pc->image_bundle["cnt"].nodataval;
-    size_t fp_cnt{0}, data_cnt{0};
-    for (size_t i=0; i<fp.size(); ++i) {
-      if( fp[i] != 0 ) {
-        ++fp_cnt;
-        if( cnt[i] != cnt_nodata ) {
-          ++data_cnt;
-        }
-      }
-    }
-    if (data_cnt == 0) {
-      return 0;
-    } else {
-      double data_frac = double(data_cnt) / double(fp_cnt);
-      return float(1 - data_frac);
-    }
   }
 
   float computeNoDataMaxCircleFraction(const CandidatePointCloud* pc) {
