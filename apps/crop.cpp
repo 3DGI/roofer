@@ -48,9 +48,11 @@ void print_help(std::string program_name) {
 
 void print_version() {
   fmt::print("roofer {} ({}{}{})\n", 
-  git_Describe(), 
-  git_Branch() == "main" ? "" : fmt::format("{}, ", git_Branch()), 
-  git_AnyUncommittedChanges() ? "dirty, " : "", git_CommitDate());
+    git_Describe(), 
+    git_Branch() == "main" ? "" : fmt::format("{}, ", git_Branch()), 
+    git_AnyUncommittedChanges() ? "dirty, " : "", 
+    git_CommitDate()
+  );
 }
 
 struct InputPointcloud {
@@ -255,8 +257,9 @@ int main(int argc, const char * argv[]) {
     );
   }
 
-  // compute nodata maxcircle
   // compute rasters
+  // thin
+  // compute nodata maxcircle
   const unsigned N_fp = footprints.size();
   for (auto& ipc : input_pointclouds) {
     spdlog::info("Analysing pointcloud {}...", ipc.name);
@@ -269,6 +272,16 @@ int main(int argc, const char * argv[]) {
     // auto& r_nodata = attributes.insert_vec<float>("r_nodata_"+ipc.name);
     roofer::arr2f nodata_c;
     for(unsigned i=0; i<N_fp; ++i) {
+      roofer::RasterisePointcloud(
+        ipc.building_clouds[i],
+        footprints[i],
+        ipc.building_rasters[i]
+      );
+      ipc.nodata_fractions[i] = roofer::computeNoDataFraction(ipc.building_rasters[i]);
+      ipc.pt_densities[i] = roofer::computePointDensity(ipc.building_rasters[i]);
+
+
+
       roofer::compute_nodata_circle(
         ipc.building_clouds[i],
         footprints[i],
@@ -282,16 +295,6 @@ int main(int argc, const char * argv[]) {
           nodata_c
         );
       }
-      // r_nodata.push_back(ipc.nodata_radii[i]);
-      
-      roofer::RasterisePointcloud(
-        ipc.building_clouds[i],
-        footprints[i],
-        ipc.building_rasters[i]
-      );
-
-      ipc.nodata_fractions[i] = roofer::computeNoDataFraction(ipc.building_rasters[i]);
-      ipc.pt_densities[i] = roofer::computePointDensity(ipc.building_rasters[i]);
     }
   }
 
@@ -375,6 +378,7 @@ int main(int argc, const char * argv[]) {
         pc_select.push_back("BAD_COVERAGE");
       if (!selected) {
         // spdlog::info("Did not find suitable point cloud for footprint idx: {}. Skipping configuration", bid);
+        pc_source.push_back("none");
         continue ;
       }
     } else {

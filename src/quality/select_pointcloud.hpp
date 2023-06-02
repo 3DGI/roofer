@@ -14,9 +14,9 @@ namespace roofer {
   };
 
   enum PointCloudSelectExplanation {
+    BAD_COVERAGE,
     BEST_SUFFICIENT,
-    LATEST_SUFFICIENT,
-    BAD_COVERAGE
+    LATEST_SUFFICIENT
   };
 
   struct selectPointCloudConfig {
