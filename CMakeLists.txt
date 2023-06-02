@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project (roofer VERSION 0.1)
+project (roofer)
 
 option(RF_BUILD_GUI "Build the GUI apps" OFF)
 
