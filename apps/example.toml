@@ -23,6 +23,8 @@ path = '/home/ravi/git/roofer/roofer_data/yoc-2019-completely-new-kadaster.laz'
 [parameters]
 cellsize = 0.5
 max_point_density = 20
+skip_area = 50
+skip_attribute = 'kas_warenhuis'
 
 [output]
 path = '/output/test_all'

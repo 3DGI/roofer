@@ -3,7 +3,6 @@
 namespace roofer {
 
   struct CandidatePointCloud {
-    float area;           // footprint area
     float nodata_radius;  // radius of the incribed circle in the largest gap
                           // in the point cloud
     ImageMap& image_bundle;

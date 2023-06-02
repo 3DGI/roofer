@@ -31,11 +31,6 @@ namespace roofer {
                               float threshold_nodata,
                               float threshold_maxcircle);
 
-  // Count the pixels that are NoData in the Image.
-  // size_t countNoData(const Image& img);
-
-  float computeNoDataMaxCircleFraction(const CandidatePointCloud* pc);
-
   // Compute a boolean mask that indicates that the cell has data.
   std::vector<bool> computeMask(const std::vector<float>& image_array,
                                 const float& nodataval);
@@ -144,16 +139,6 @@ namespace roofer {
     // float nodata_maxcircle = computeNoDataMaxCircleFraction(pc);
     bool maxcircle_good = pc->nodata_radius <= threshold_maxcircle;
     return nodata_good && maxcircle_good;
-  }
-
-  float computeNoDataMaxCircleFraction(const CandidatePointCloud* pc) {
-    if (pc->area == 0 || pc->nodata_radius == 0) {
-      return 0;
-    } else {
-      double pi = std::atan(1) * 4;
-      double nodata_area = std::pow(pc->nodata_radius, 2) * pi;
-      return float(nodata_area / pc->area);
-    }
   }
 
 }  // namespace roofer

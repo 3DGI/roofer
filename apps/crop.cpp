@@ -110,6 +110,8 @@ int main(int argc, const char * argv[]) {
   // pointclouds, footprints
   float max_point_density = 20;
   float cellsize = 0.5;
+  float skip_area = 10000.0;
+  std::string skip_attribute = "kas_warenhuis";
   std::string config_path;
   std::string building_toml_file_spec;
   std::string building_las_file_spec;
@@ -187,6 +189,13 @@ int main(int argc, const char * argv[]) {
     if(cellsize_.has_value())
       cellsize = *cellsize_;
 
+    auto skip_area_ = config["parameters"]["skip_area"].value<int>();
+    if(skip_area_.has_value())
+      skip_area = *skip_area_;
+    auto skip_attribute_ = config["parameters"]["skip_attribute"].value<std::string>();
+    if(skip_attribute_.has_value())
+      skip_attribute = *skip_attribute_;
+
     auto building_toml_file_spec_ = config["output"]["building_toml_file"].value<std::string>();
     if(building_toml_file_spec_.has_value())
       building_toml_file_spec = *building_toml_file_spec_;
@@ -243,6 +252,17 @@ int main(int argc, const char * argv[]) {
   std::vector<roofer::LinearRing> footprints;
   roofer::AttributeVecMap attributes;
   VectorReader->readPolygons(footprints, &attributes);
+  
+  const unsigned N_fp = footprints.size();
+
+  if(!attributes.get_if<bool>(skip_attribute)) {
+    auto& vec = attributes.insert_vec<bool>(skip_attribute);
+    vec.resize(N_fp, false);
+  }
+  auto skip_vec = attributes.get_if<bool>(skip_attribute);
+  for (size_t i=0; i<N_fp; ++i) {
+    (*skip_vec)[i] = (*skip_vec)[i] || footprints[i].signed_area() > skip_area;
+  }
 
   // simplify + buffer footprints
   spdlog::info("Simplifying and buffering footprints...");
@@ -270,7 +290,6 @@ int main(int argc, const char * argv[]) {
   // compute rasters
   // thin
   // compute nodata maxcircle
-  const unsigned N_fp = footprints.size();
   for (auto& ipc : input_pointclouds) {
     spdlog::info("Analysing pointcloud {}...", ipc.name);
     ipc.nodata_radii.resize(N_fp);
@@ -367,7 +386,6 @@ int main(int argc, const char * argv[]) {
       for (auto& ipc : input_pointclouds) {
         candidates.push_back(
           roofer::CandidatePointCloud {
-            footprints[i].signed_area(),
             ipc.nodata_radii[i],
             // 0, // TODO: get footprint year of construction
             ipc.building_rasters[i],
