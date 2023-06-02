@@ -47,7 +47,10 @@ void print_help(std::string program_name) {
 }
 
 void print_version() {
-  fmt::print("roofer {} ({}{}, {})\n", git_Describe(), git_Branch() , git_AnyUncommittedChanges() ? ", dirty" : "", git_CommitDate());
+  fmt::print("roofer {} ({}{}{})\n", 
+  git_Describe(), 
+  git_Branch() == "main" ? "" : fmt::format("{}, ", git_Branch()), 
+  git_AnyUncommittedChanges() ? "dirty, " : "", git_CommitDate());
 }
 
 struct InputPointcloud {
