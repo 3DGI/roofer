@@ -14,6 +14,8 @@ namespace roofer {
     float cellsize = 0.5
   );
 
+  void gridthinPointcloud(PointCollection& pointcloud, const Image& cnt_image, float max_density=20);
+
   float computeNoDataFraction(const ImageMap& pc);
 
   float computePointDensity(const ImageMap& pc);

@@ -5,6 +5,7 @@
 
 #include <numeric>
 #include <algorithm>
+#include <random>
 
 #include "spdlog/spdlog.h"
 
@@ -126,6 +127,45 @@ namespace roofer {
         }
       }
     }
+  }
+
+
+  size_t getLinearCoord(const Image& im, double x, double y)
+  {
+    size_t r = static_cast<size_t>( floor((y-im.min_y) / im.cellsize) );
+    size_t c = static_cast<size_t>( floor((x-im.min_x) / im.cellsize) );
+    
+    return r * im.dim_x + c;
+  }
+  void gridthinPointcloud(PointCollection& pointcloud, const Image& cnt_image, float max_density) {
+    const auto max_cnt_per_cell = max_density * (cnt_image.cellsize * cnt_image.cellsize);
+    
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<> dis(0.0, 1.0);
+
+    PointCollection thinned_points;
+    auto& thinned_classification = thinned_points.attributes.insert_vec<int>("classification");
+    auto classification = pointcloud.attributes.get_if<int>("classification");
+    for(size_t pi=0; pi < pointcloud.size(); ++pi) {
+      auto& p = pointcloud[pi];
+      auto& c = (*classification)[pi];
+      auto i = getLinearCoord(cnt_image, p[0], p[1]);
+      if (i < 0 || i> cnt_image.array.size()) continue;
+
+      // check if we have too many points in this cell
+      if (cnt_image.array[i] > max_cnt_per_cell) {
+        // generate random number [0-1] and compare to the fraction of points we need to preserve in this cell
+        if(dis(gen) <= (max_cnt_per_cell / cnt_image.array[i])) {
+          thinned_points.push_back(p);
+          thinned_classification.push_back(c);
+        }
+      } else {
+        thinned_points.push_back(p);
+        thinned_classification.push_back(c);
+      }
+    }
+    pointcloud = thinned_points;
   }
 
   float computePointDensity(const ImageMap& pc) {

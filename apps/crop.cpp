@@ -108,6 +108,8 @@ int main(int argc, const char * argv[]) {
 
   // TOML config parsing
   // pointclouds, footprints
+  float max_point_density = 20;
+  float cellsize = 0.5;
   std::string config_path;
   std::string building_toml_file_spec;
   std::string building_las_file_spec;
@@ -176,6 +178,14 @@ int main(int argc, const char * argv[]) {
         input_pointclouds.push_back( pc );
       };
     }
+
+    auto max_point_density_ = config["parameters"]["max_point_density"].value<float>();
+    if(max_point_density_.has_value())
+      max_point_density = *max_point_density_;
+
+    auto cellsize_ = config["parameters"]["cellsize"].value<float>();
+    if(cellsize_.has_value())
+      cellsize = *cellsize_;
 
     auto building_toml_file_spec_ = config["output"]["building_toml_file"].value<std::string>();
     if(building_toml_file_spec_.has_value())
@@ -275,12 +285,17 @@ int main(int argc, const char * argv[]) {
       roofer::RasterisePointcloud(
         ipc.building_clouds[i],
         footprints[i],
-        ipc.building_rasters[i]
+        ipc.building_rasters[i],
+        cellsize
       );
       ipc.nodata_fractions[i] = roofer::computeNoDataFraction(ipc.building_rasters[i]);
       ipc.pt_densities[i] = roofer::computePointDensity(ipc.building_rasters[i]);
 
-
+      gridthinPointcloud(
+        ipc.building_clouds[i], 
+        ipc.building_rasters[i]["cnt"],
+        max_point_density
+      );
 
       roofer::compute_nodata_circle(
         ipc.building_clouds[i],
