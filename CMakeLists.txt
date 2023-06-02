@@ -3,6 +3,13 @@ project (roofer VERSION 0.1)
 
 option(RF_BUILD_GUI "Build the GUI apps" OFF)
 
+include(FetchContent)
+FetchContent_Declare(cmake_git_version_tracking                   
+  GIT_REPOSITORY https://github.com/andrew-hardin/cmake-git-version-tracking.git
+  GIT_TAG 904dbda1336ba4b9a1415a68d5f203f576b696bb
+)
+FetchContent_MakeAvailable(cmake_git_version_tracking)
+
 # ptinpoly
 add_library(ptinpoly STATIC external/ptinpoly/ptinpoly.c)
 set_target_properties(

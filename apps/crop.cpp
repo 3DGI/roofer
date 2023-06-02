@@ -16,6 +16,8 @@
 #include "fmt/format.h"
 #include "spdlog/spdlog.h"
 
+#include "git.h"
+
 #include <cstddef>
 #include <cstdlib>
 #include <iostream>
@@ -35,12 +37,17 @@ void print_help(std::string program_name) {
   fmt::print("Options:\n");
   // std::cout << "   -v, --version                Print version information\n";
   fmt::print("   -h, --help                   Show this help message\n");
+  fmt::print("   -V, --version                Show version\n");
   fmt::print("   -v, --verbose                Be more verbose\n");
   fmt::print("   -c <file>, --config <file>   Config file\n");
   fmt::print("   -r, --rasters                Output rasterised building pointclouds\n");
   fmt::print("   -m, --metadata               Output metadata.json file\n");
   fmt::print("   -i, --index                  Output index.gpkg file\n");
   fmt::print("   -a, --all                    Output files for each candidate point cloud instead of only the optimal candidate\n");
+}
+
+void print_version() {
+  fmt::print("roofer {} ({}{})\n", git_Describe(), git_AnyUncommittedChanges() ? "dirty, " : "", git_CommitDate());
 }
 
 struct InputPointcloud {
@@ -75,9 +82,14 @@ int main(int argc, const char * argv[]) {
   bool write_metadata = cmdl[{"-m", "--metadata"}];
   bool write_index = cmdl[{"-i", "--index"}];
   bool verbose = cmdl[{"-v", "--verbose"}];
+  bool version = cmdl[{"-V", "--version"}];
 
   if (cmdl[{"-h", "--help"}]) {
     print_help(program_name);
+    return EXIT_SUCCESS;
+  }
+  if (version) {
+    print_version();
     return EXIT_SUCCESS;
   }
 

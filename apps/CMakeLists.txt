@@ -5,7 +5,7 @@ set_target_properties(
   crop PROPERTIES 
   CXX_STANDARD 17
 )
-target_link_libraries(crop PRIVATE rooferlib)
+target_link_libraries(crop PRIVATE rooferlib cmake_git_version_tracking)
 
 install(TARGETS crop DESTINATION bin)
 
@@ -18,5 +18,5 @@ if(${RF_BUILD_GUI})
     ransac_demo PROPERTIES 
     CXX_STANDARD 17
   )
-  target_link_libraries(ransac_demo PRIVATE rooferlib polyscope)
+  target_link_libraries(ransac_demo PRIVATE rooferlib polyscope cmake_git_version_tracking)
 endif()
