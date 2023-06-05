@@ -1,3 +1,4 @@
+#include <string>
 #include "../geometry/PointcloudRasteriser.hpp"
 
 namespace roofer {
@@ -5,6 +6,7 @@ namespace roofer {
   struct CandidatePointCloud {
     float nodata_radius;  // radius of the incribed circle in the largest gap
                           // in the point cloud
+    float nodata_fraction; // nodata fraction
     ImageMap& image_bundle;
     int building_yoc;     // year of construction of building. -1 if unknown
     std::string name;     // point cloud name
@@ -14,16 +16,23 @@ namespace roofer {
   };
 
   enum PointCloudSelectExplanation {
-    BAD_COVERAGE, // insufficient point coverage in all point clouds
-    PC_OUTDATED, // buildings reconstructed after pc acquisition
-    BEST_SUFFICIENT, // PC selected with quality label and suffcient coverage
-    LATEST_SUFFICIENT // PC selected that contains mutations that were detected (but not highest qualirt label)
+    NONE,
+    PREFERRED_AND_LATEST,// PL
+    PREFERRED_NOT_LATEST,// P
+    LATEST_WITH_MUTATION,// LM
+    _HIGHEST_YET_INSUFFICIENT_COVERAGE,// _C(M)
+    _LATEST_BUT_OUTDATED // _L
+  };
+
+  struct PointCloudSelectResult {
+    const CandidatePointCloud* selected_pointcloud = nullptr;
+    PointCloudSelectExplanation explanation = NONE;
   };
 
   struct selectPointCloudConfig {
     // Thresholds determined from AHN3 Leiden
-    // total % of no data area inside footprint 
-    float threshold_nodata = 6.0;
+    // total fraction of no data area inside footprint 
+    float threshold_nodata = 0.06;
     // max allowed nodata radius
     float threshold_maxcircle = 0.5;
     // The >=50% change was determined by analyzing the data.
@@ -41,8 +50,7 @@ namespace roofer {
   // 2. best quality, unless there is coverage issue (based on user quality rating, case Kadaster DIM/AHN)
   // In both cases poor coverage candidates are eliminated
   // Also considers mutations, ie. in case best quality candidate is mutated wrt latest latest is selected
-  const CandidatePointCloud* selectPointCloud(const std::vector<CandidatePointCloud>& candidates,
-                        PointCloudSelectExplanation& explanation,
+  const PointCloudSelectResult selectPointCloud(const std::vector<CandidatePointCloud>& candidates,
                         const selectPointCloudConfig cfg = selectPointCloudConfig());
 
 }  // namespace roofer

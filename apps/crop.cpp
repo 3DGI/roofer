@@ -389,6 +389,7 @@ int main(int argc, const char * argv[]) {
     } else {
       bid = std::to_string(i);
     }
+    spdlog::debug("bid={}", bid);
     
     std::vector<roofer::CandidatePointCloud> candidates;
     candidates.reserve(input_pointclouds.size());
@@ -398,52 +399,52 @@ int main(int argc, const char * argv[]) {
         candidates.push_back(
           roofer::CandidatePointCloud {
             ipc.nodata_radii[i],
+            ipc.nodata_fractions[i],
             ipc.building_rasters[i],
             yoc_vec ? (*yoc_vec)[i].value_or(-1) : -1,
             ipc.name,
             ipc.quality,
             ipc.date,
-            j++
+            j++            
           }
         );
         jsonl_paths.insert({ipc.name, roofer::vec1s{}});
       }
       jsonl_paths.insert({"", roofer::vec1s{}});
     }
-    const roofer::CandidatePointCloud* selected = nullptr;
-    if(input_pointclouds.size()>1) {
-      roofer::PointCloudSelectExplanation explanation;
-      selected = roofer::selectPointCloud(candidates, explanation, select_pc_cfg);
-      if (explanation == roofer::PointCloudSelectExplanation::BEST_SUFFICIENT )
-        pc_select.push_back("BEST_SUFFICIENT");
-      else if (explanation == roofer::PointCloudSelectExplanation::LATEST_SUFFICIENT )
-        pc_select.push_back("LATEST_SUFFICIENT");
-      else if (explanation == roofer::PointCloudSelectExplanation::BAD_COVERAGE )
-        pc_select.push_back("BAD_COVERAGE");
-      else if (explanation == roofer::PointCloudSelectExplanation::PC_OUTDATED )
-        pc_select.push_back("PC_OUTDATED");
-      if (!selected) {
-        // spdlog::info("Did not find suitable point cloud for footprint idx: {}. Skipping configuration", bid);
-        pc_source.push_back("none");
-        continue ;
-      }
-    } else {
-      pc_select.push_back("NA");
-      selected = &candidates[0];
+
+    roofer::PointCloudSelectResult sresult = roofer::selectPointCloud(candidates, select_pc_cfg);
+    const roofer::CandidatePointCloud* selected = sresult.selected_pointcloud;
+    if (sresult.explanation == roofer::PointCloudSelectExplanation::PREFERRED_AND_LATEST )
+      pc_select.push_back("PREFERRED_AND_LATEST");
+    else if (sresult.explanation == roofer::PointCloudSelectExplanation::PREFERRED_NOT_LATEST )
+      pc_select.push_back("PREFERRED_NOT_LATEST");
+    else if (sresult.explanation == roofer::PointCloudSelectExplanation::LATEST_WITH_MUTATION )
+      pc_select.push_back("LATEST_WITH_MUTATION");
+    else if (sresult.explanation == roofer::PointCloudSelectExplanation::_HIGHEST_YET_INSUFFICIENT_COVERAGE )
+      pc_select.push_back("_HIGHEST_YET_INSUFFICIENT_COVERAGE");
+    else if (sresult.explanation == roofer::PointCloudSelectExplanation::_LATEST_BUT_OUTDATED ) {
+      pc_select.push_back("_LATEST_BUT_OUTDATED");
+      // // clear pc
+      // ipc[selected->index].building_clouds[i].clear();
     }
+    else pc_select.push_back("NONE");
+
+    // this is a sanity check and should never happen
+    if (!selected) {
+      spdlog::error("Unable to select pointcloud");
+      exit(1);
+    }
+
     pc_source.push_back(selected->name);
-    // TODO: Compare PC with year of construction of footprint if available
-    // if (selected) spdlog::info("Selecting pointcloud: {}", input_pointclouds[selected->index].name);
-    
     {
       // fs::create_directories(fs::path(fname).parent_path());
       std::string fp_path = fmt::format(building_gpkg_file_spec, fmt::arg("bid", bid), fmt::arg("path", output_path));
       VectorWriter->writePolygons(fp_path, footprints, attributes, i, i+1);
 
       size_t j=0;
-      auto selected_index = selected ? selected->index : -1;
       for (auto& ipc : input_pointclouds) {
-        if((selected_index != j) && (only_write_selected)) {
+        if((selected->index != j) && (only_write_selected)) {
           ++j;
           continue;
         };
@@ -469,6 +470,7 @@ int main(int argc, const char * argv[]) {
         
         auto gf_config = toml::table {
           {"INPUT_FOOTPRINT", fp_path},
+          // {"INPUT_POINTCLOUD", sresult.explanation == roofer::PointCloudSelectExplanation::_LATEST_BUT_OUTDATED ? "" : pc_path},
           {"INPUT_POINTCLOUD", pc_path},
           {"BID", bid},
           {"GROUND_ELEVATION", h_ground},
@@ -504,7 +506,7 @@ int main(int argc, const char * argv[]) {
 
           jsonl_paths[ipc.name].push_back( jsonl_path );
         }
-        if(selected_index == j) {
+        if(selected->index == j) {
           // set optimal jsonl path
           std::string jsonl_path = fmt::format(building_jsonl_file_spec, fmt::arg("bid", bid), fmt::arg("pc_name", ""), fmt::arg("path", output_path));
           gf_config.insert_or_assign("OUTPUT_JSONL", jsonl_path);

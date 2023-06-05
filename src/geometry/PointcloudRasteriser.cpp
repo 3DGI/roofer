@@ -181,7 +181,7 @@ namespace roofer {
       }
     }
     // spdlog::debug("pt_cnt: {}, fp_cnt: {}, cellsize: {}", pt_cnt, fp_cnt, cellsize);
-    if (pt_cnt == 0) {
+    if (fp_cnt == 0) {
       return 0;
     } else {
       auto cell_area = cellsize * cellsize;
@@ -202,7 +202,7 @@ namespace roofer {
         }
       }
     }
-    if (data_cnt == 0) {
+    if (fp_cnt == 0) {
       return 0;
     } else {
       double data_frac = double(data_cnt) / double(fp_cnt);

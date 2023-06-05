@@ -4,20 +4,26 @@
 #include <numeric>
 #include <algorithm>
 
-// #include "spdlog/spdlog.h"
+#include "spdlog/spdlog.h"
 
 namespace roofer {
 
-  // out the one with lowest quality val on top
+  // put the one with lowest quality value (meaning highest quality) on top
   bool compareByQuality(const CandidatePointCloud* a,
                         const CandidatePointCloud* b) {
     return a->quality < b->quality;
   }
 
-  // out the one with highest (most recent) date on top
+  // put the one with highest (most recent) date on top
   bool compareByDate(const CandidatePointCloud* a,
                      const CandidatePointCloud* b) {
     return a->date > b->date;
+  }
+
+  // put the one with lowest nodata_fraction on top
+  bool compareByNoDataFraction(const CandidatePointCloud* a,
+                     const CandidatePointCloud* b) {
+    return a->nodata_fraction < b->nodata_fraction;
   }
 
   // Determine if the point cloud has enough point coverage for a good
@@ -35,36 +41,39 @@ namespace roofer {
   std::vector<bool> computeMask(const std::vector<float>& image_array,
                                 const float& nodataval);
 
-  const CandidatePointCloud* selectPointCloud(const std::vector<CandidatePointCloud>& candidates,
-                                        PointCloudSelectExplanation& explanation,
-                                        const selectPointCloudConfig cfg) {
+  const PointCloudSelectResult selectPointCloud(const std::vector<CandidatePointCloud>& candidates,
+                                                const selectPointCloudConfig cfg) {
+    PointCloudSelectResult result;
     std::vector<const CandidatePointCloud*> candidates_quality;
     std::vector<const CandidatePointCloud*> candidates_date;
+    std::vector<const CandidatePointCloud*> candidates_coverage;
     for(auto& cand : candidates) {
       candidates_quality.push_back(&cand);
       candidates_date.push_back(&cand);
+      candidates_coverage.push_back(&cand);
     }
     CandidatePointCloud* candidate_selected;
     std::sort(candidates_date.begin(), candidates_date.end(),
               roofer::compareByDate);
-    if(candidates_date[0]->building_yoc != -1)
-      if(candidates_date[0]->building_yoc > candidates_date[0]->date) {
-        explanation = PointCloudSelectExplanation::PC_OUTDATED;
-        return nullptr;
-      }
-
     std::sort(candidates_quality.begin(), candidates_quality.end(),
               roofer::compareByQuality);
-    // Actually, the .yoc (and other footprint related values) are the same for
-    // each candidate
-    // if (latest.yoc >= latest.date) {
-    //   explanation = PointCloudSelectExplanation::TOO_OLD;
-    //   return;
-    // }
+    std::sort(candidates_coverage.begin(), candidates_coverage.end(),
+              roofer::compareByNoDataFraction);
+
+    if(candidates_date[0]->building_yoc != -1) {
+      if(candidates_date[0]->building_yoc > candidates_date[0]->date) {
+        // spdlog::debug("_LATEST_BUT_OUTDATED");
+        result.explanation = PointCloudSelectExplanation::_LATEST_BUT_OUTDATED;
+        result.selected_pointcloud = candidates_date[0];
+        return result;
+      }
+    }
+
     // get the highest quality candidate with sufficient coverage
     const CandidatePointCloud* best_suffcient = nullptr;
     // int candidates_quality_idx(-1);
     for (unsigned i = 0; i < candidates_quality.size(); ++i) {
+      // spdlog::debug("quality {}={}", candidates_quality[i]->name, candidates_quality[i]->quality);
       if (roofer::hasEnoughPointCoverage(
               candidates_quality[i], cfg.threshold_nodata, cfg.threshold_maxcircle)) {
         best_suffcient = candidates_quality[i];
@@ -72,11 +81,30 @@ namespace roofer {
         break;
       }
     }
+
     // no candidate has sufficient coverage
+    // find candidate pc with higest coverage that is not mutated wrt latest pc
     if (!best_suffcient) {
-      explanation = PointCloudSelectExplanation::BAD_COVERAGE;
-      return nullptr;
+      // spdlog::debug("best_suffcient=nullptr");
+      result.explanation = PointCloudSelectExplanation::_HIGHEST_YET_INSUFFICIENT_COVERAGE;
+      for (unsigned i = 0; i < candidates_coverage.size(); ++i) {
+        if (!roofer::isMutated(
+          candidates_coverage[i]->image_bundle, 
+          candidates_date[0]->image_bundle,
+          cfg.threshold_mutation_fraction, 
+          cfg.threshold_mutation_difference
+        )) {
+          result.selected_pointcloud = candidates_coverage[i];
+          result.explanation = _HIGHEST_YET_INSUFFICIENT_COVERAGE;
+          return result;
+        }
+      }
+      // we should never reach this point (since the above loop will at some point compare latest to itselft and there should be no mutation)
+      spdlog::error("Unable to select pointcloud");
+      exit(1);
     }
+    // spdlog::debug("best_suffcient={}", best_suffcient->name);
+
     // get the latest candidate with sufficient coverage
     const CandidatePointCloud* latest_suffcient = nullptr;
     // int candidates_latest_idx(-1);
@@ -88,61 +116,48 @@ namespace roofer {
         break;
       }
     }
+    // spdlog::debug("latest_suffcient={}", latest_suffcient->name);
 
     // highest quality is also latest pointcloud
     if (best_suffcient == latest_suffcient) {
-      explanation = PointCloudSelectExplanation::BEST_SUFFICIENT;
-      return best_suffcient;
-    // check for mutations
+      result.selected_pointcloud = best_suffcient;
+      result.explanation = PointCloudSelectExplanation::PREFERRED_AND_LATEST;
+      return result;
+    // else check for mutations
     } else {
-      // check if latest PC has enough coverage
-      // if (roofer::hasEnoughPointCoverage(latest_suffcient, cfg.threshold_nodata,
-                                        //  cfg.threshold_maxcircle)) {
-      if (roofer::isMutated(best_suffcient->image_bundle, latest_suffcient->image_bundle, cfg.threshold_mutation_fraction, cfg.threshold_mutation_difference)) {
+      if (roofer::isMutated(
+        best_suffcient->image_bundle, 
+        latest_suffcient->image_bundle, 
+        cfg.threshold_mutation_fraction, 
+        cfg.threshold_mutation_difference
+      )) {
         // If the two point clouds are different, that means
         // that the object has changed and the selected point
         // cloud is outdated, therefore, we have to use the
         // latest point cloud, even if it is possibly a lower
         // quality.
-        explanation = PointCloudSelectExplanation::LATEST_SUFFICIENT;
-        return latest_suffcient;
+        result.selected_pointcloud = latest_suffcient;
+        result.explanation = PointCloudSelectExplanation::LATEST_WITH_MUTATION;
+        return result;
       } else {
         // return the best point cloud, it seems to be not mutated in the latest_sufficient 
-        explanation = PointCloudSelectExplanation::BEST_SUFFICIENT;
-        return best_suffcient;
+        result.selected_pointcloud = best_suffcient;
+        result.explanation = PointCloudSelectExplanation::PREFERRED_NOT_LATEST;
+        return result;
       }
-        // They are not different, so keep the initially selected
-        // higher-quality point cloud.
-      // } else {
-      //   // In this case, the latest point cloud is not even suitable for mutation detection,
-      //   // because it is missing most of its points. So we need to rely on the
-      //   // year of construction of the object to check if we can use the point
-      //   // cloud.
-      //   if (candidate_selected.yoc >= candidate_selected.date) {
-      //     // Selected point cloud was too old
-      //     explanation = PointCloudSelectExplanation::LATEST_INSUFFICIENT;
-      //     candidate_selected = CandidatePointCloud();
-      //     for (unsigned i = candidates_quality_idx;
-      //          i < candidates_quality.size(); ++i) {
-      //       auto candidate = candidates_quality[i];
-      //       if (candidate.yoc < candidate.date) {
-      //         explanation = PointCloudSelectExplanation::BEST_SUITABLE_QUALITY;
-      //         candidate_selected = candidate;
-      //         break;
-      //       }
-      //     }
-      //   }
-      // }
     }
   }
 
   bool hasEnoughPointCoverage(const CandidatePointCloud* pc,
                               float threshold_nodata,
                               float threshold_maxcircle) {
-    float nodata = roofer::computeNoDataFraction(pc->image_bundle);
-    bool nodata_good = nodata <= threshold_nodata;
+    // float nodata = roofer::computeNoDataFraction(pc->image_bundle);
+    // spdlog::debug("pc->nodata_fraction={}, threshold_nodata={}", pc->nodata_fraction, threshold_nodata);
+    bool nodata_good = pc->nodata_fraction <= threshold_nodata;
     // float nodata_maxcircle = computeNoDataMaxCircleFraction(pc);
     bool maxcircle_good = pc->nodata_radius <= threshold_maxcircle;
+    // spdlog::debug("pc->nodata_radius={}, threshold_maxcircle={}", pc->nodata_radius, threshold_maxcircle);
+    // spdlog::debug("nodata_good={}, maxcircle_good={}", nodata_good, maxcircle_good);
     return nodata_good && maxcircle_good;
   }
 
