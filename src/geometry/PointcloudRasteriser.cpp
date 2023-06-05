@@ -265,6 +265,8 @@ namespace roofer {
     // spdlog::debug("change_mask size: {}, footprint_mask size: {}", change_mask.size(), footprint_mask.size());
     int footprint_pixel_cnt =
         std::accumulate(footprint_mask.begin(), footprint_mask.end(), int(0));
+    if(footprint_pixel_cnt == 0) return 0;
+    
     int change_pixel_cnt =
         std::accumulate(change_mask.begin(), change_mask.end(), int(0));
 
