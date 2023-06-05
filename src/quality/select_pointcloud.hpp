@@ -6,6 +6,7 @@ namespace roofer {
     float nodata_radius;  // radius of the incribed circle in the largest gap
                           // in the point cloud
     ImageMap& image_bundle;
+    int building_yoc;     // year of construction of building. -1 if unknown
     std::string name;     // point cloud name
     int quality;          // point cloud quality score. The lower the better the quality.
     int date;             // point cloud acquisition date
@@ -13,9 +14,10 @@ namespace roofer {
   };
 
   enum PointCloudSelectExplanation {
-    BAD_COVERAGE,
-    BEST_SUFFICIENT,
-    LATEST_SUFFICIENT
+    BAD_COVERAGE, // insufficient point coverage in all point clouds
+    PC_OUTDATED, // buildings reconstructed after pc acquisition
+    BEST_SUFFICIENT, // PC selected with quality label and suffcient coverage
+    LATEST_SUFFICIENT // PC selected that contains mutations that were detected (but not highest qualirt label)
   };
 
   struct selectPointCloudConfig {

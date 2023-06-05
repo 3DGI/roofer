@@ -111,6 +111,7 @@ int main(int argc, const char * argv[]) {
   float max_point_density = 20;
   float cellsize = 0.5;
   float skip_area = 10000.0;
+  std::string year_of_construction_attribute = "oorspronkelijkbouwjaar";
   std::string skip_attribute = "kas_warenhuis";
   std::string config_path;
   std::string building_toml_file_spec;
@@ -195,6 +196,9 @@ int main(int argc, const char * argv[]) {
     auto skip_attribute_ = config["parameters"]["skip_attribute"].value<std::string>();
     if(skip_attribute_.has_value())
       skip_attribute = *skip_attribute_;
+    auto year_of_construction_attribute_ = config["parameters"]["year_of_construction_attribute"].value<std::string>();
+    if(year_of_construction_attribute_.has_value())
+      year_of_construction_attribute = *year_of_construction_attribute_;
 
     auto building_toml_file_spec_ = config["output"]["building_toml_file"].value<std::string>();
     if(building_toml_file_spec_.has_value())
@@ -255,6 +259,7 @@ int main(int argc, const char * argv[]) {
   
   const unsigned N_fp = footprints.size();
 
+  // check if skip_attribute exists, if not then create it
   if(!attributes.get_if<bool>(skip_attribute)) {
     auto& vec = attributes.insert_vec<bool>(skip_attribute);
     vec.resize(N_fp, false);
@@ -262,6 +267,12 @@ int main(int argc, const char * argv[]) {
   auto skip_vec = attributes.get_if<bool>(skip_attribute);
   for (size_t i=0; i<N_fp; ++i) {
     (*skip_vec)[i] = (*skip_vec)[i] || footprints[i].signed_area() > skip_area;
+  }
+
+  // get yoc attribute vector (nullptr if it does not exist)
+  auto yoc_vec = attributes.get_if<int>(year_of_construction_attribute);
+  if (!yoc_vec) {
+    spdlog::warn("year_of_construction_attribute '{}' not found in input footprints", year_of_construction_attribute);
   }
 
   // simplify + buffer footprints
@@ -387,8 +398,8 @@ int main(int argc, const char * argv[]) {
         candidates.push_back(
           roofer::CandidatePointCloud {
             ipc.nodata_radii[i],
-            // 0, // TODO: get footprint year of construction
             ipc.building_rasters[i],
+            yoc_vec ? (*yoc_vec)[i].value_or(-1) : -1,
             ipc.name,
             ipc.quality,
             ipc.date,
@@ -409,6 +420,8 @@ int main(int argc, const char * argv[]) {
         pc_select.push_back("LATEST_SUFFICIENT");
       else if (explanation == roofer::PointCloudSelectExplanation::BAD_COVERAGE )
         pc_select.push_back("BAD_COVERAGE");
+      else if (explanation == roofer::PointCloudSelectExplanation::PC_OUTDATED )
+        pc_select.push_back("PC_OUTDATED");
       if (!selected) {
         // spdlog::info("Did not find suitable point cloud for footprint idx: {}. Skipping configuration", bid);
         pc_source.push_back("none");

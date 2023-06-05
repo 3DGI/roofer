@@ -45,11 +45,16 @@ namespace roofer {
       candidates_date.push_back(&cand);
     }
     CandidatePointCloud* candidate_selected;
-    std::sort(candidates_quality.begin(), candidates_quality.end(),
-              roofer::compareByQuality);
     std::sort(candidates_date.begin(), candidates_date.end(),
               roofer::compareByDate);
+    if(candidates_date[0]->building_yoc != -1)
+      if(candidates_date[0]->building_yoc > candidates_date[0]->date) {
+        explanation = PointCloudSelectExplanation::PC_OUTDATED;
+        return nullptr;
+      }
 
+    std::sort(candidates_quality.begin(), candidates_quality.end(),
+              roofer::compareByQuality);
     // Actually, the .yoc (and other footprint related values) are the same for
     // each candidate
     // if (latest.yoc >= latest.date) {
