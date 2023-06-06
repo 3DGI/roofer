@@ -100,9 +100,9 @@ namespace roofer {
     image_bundle["fp"].array = *r_fp.vals_;
     image_bundle["cnt"] = image_bundle["max"], image_bundle["med"] = image_bundle["max"], image_bundle["avg"] = image_bundle["max"], image_bundle["var"] = image_bundle["max"];
 
-    for(size_t i=0; i<r_max.dimy_ ; ++i) {
-      for(size_t j=0; j<r_max.dimx_ ; ++j) {
-        auto p = r_max.getPointFromRasterCoords(i,j);
+    for(size_t i=0; i<r_max.dimx_ ; ++i) {
+      for(size_t j=0; j<r_max.dimy_ ; ++j) {
+        // auto p = r_max.getPointFromRasterCoords(i,j);
         // if (p[2]!=nodata) {
           // grid_points.push_back(p);
           // values.push_back(p[2]);
