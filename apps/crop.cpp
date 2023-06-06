@@ -266,7 +266,8 @@ int main(int argc, const char * argv[]) {
   }
   auto skip_vec = attributes.get_if<bool>(skip_attribute);
   for (size_t i=0; i<N_fp; ++i) {
-    (*skip_vec)[i] = (*skip_vec)[i] || footprints[i].signed_area() > skip_area;
+    // need dereference operator here for dereferencing pointer and getting std::option value
+    (*skip_vec)[i] = *(*skip_vec)[i] || std::fabs(footprints[i].signed_area()) > skip_area;
   }
 
   // get yoc attribute vector (nullptr if it does not exist)
@@ -389,7 +390,7 @@ int main(int argc, const char * argv[]) {
     } else {
       bid = std::to_string(i);
     }
-    spdlog::debug("bid={}", bid);
+    // spdlog::debug("bid={}", bid);
     
     std::vector<roofer::CandidatePointCloud> candidates;
     candidates.reserve(input_pointclouds.size());
