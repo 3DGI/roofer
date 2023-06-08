@@ -5,6 +5,8 @@
 #include "../geometry/Raster.hpp"
 #include "spdlog/spdlog.h"
 
+#include <bitset>
+#include <ctime>
 #include <filesystem>
 namespace fs = std::filesystem;
 
@@ -23,6 +25,7 @@ class PointsInPolygonsCollector  {
   std::vector<vec1f> z_ground;
   std::unordered_map<std::unique_ptr<arr3f>, std::vector<size_t>> points_overlap; // point, [poly id's], these are points that intersect with multiple polygons
 
+  std::vector<int> acquisition_years;
   int ground_class, building_class;
   
   public:
@@ -44,6 +47,7 @@ class PointsInPolygonsCollector  {
     point_clouds.resize(polygons.size());
     z_ground.resize(polygons.size());
     ground_buffer_points.resize(polygons.size());
+    acquisition_years.resize(polygons.size());
 
     for (size_t i=0; i< point_clouds.size(); ++i) {
       point_clouds.at(i).attributes.insert_vec<int>("classification");
@@ -296,6 +300,38 @@ class PointsInPolygonsCollector  {
   }
 };
 
+// Get the year-part from the GPS time of the point.
+// Assumes that the GPS time is Adjusted Standard GPS Time.
+int getAcquisitionYearOfPoint(LASpoint* laspoint) {
+  // Adjusted Standard GPS Time
+  const auto adjusted_gps_time = (double)laspoint->get_gps_time();
+  // GPS epoch - UNIX epoch + 10^9
+  // -10^9 is the adjustment in the gps time to lower the value
+  auto gps_time_unix_epoch = (std::time_t)(adjusted_gps_time + 1315964800.0);
+  int acquisition_year = std::localtime(&gps_time_unix_epoch)->tm_year + 1900;
+  return acquisition_year;
+}
+
+// If GPS Week Time is used on the points, then we use the 'file creation year'
+// as acquisition year.
+bool useFileCreationYear(LASreader* lasreader) {
+  typedef std::bitset<sizeof(uint16_t)> GlobalEncodingBits;
+  // Table 4 in https://www.asprs.org/wp-content/uploads/2010/12/LAS_1_4_r13.pdf
+  bool gps_standard_time =
+      GlobalEncodingBits(lasreader->header.global_encoding).test(0);
+  if (gps_standard_time) {
+    return false;
+  } else {
+    spdlog::info("GPS Week Time is used, defaulting to file creation year");
+    // If it is GPS Week Time, probably could handle this better here, but I'm
+    // simplifying. Also, AHN3 for instance uses week time, but there is no way
+    // of knowing which week is it...
+    // https://geoforum.nl/t/ahn3-datum-tijd-uit-gps-tijd-converteren/3476
+    // https://geoforum.nl/t/ahn3-verschillende-gps-time-types/3536
+    return true;
+  }
+}
+
 void getOgcWkt(LASheader* lasheader, std::string& wkt) {
   for (int i = 0; i < (int)lasheader->number_of_variable_length_records; i++)
   {
@@ -445,6 +481,10 @@ struct PointCloudCropper : public PointCloudCropperInterface {
         aoi_max[1]
       );
 
+      // The point cloud acquisition year is the year of the GPS time of the
+      // last point in the AOI. Unless, GPS Week Time is used, in which case
+      // we default to the 'file creation year'.
+      int acqusition_year(0);
       while (lasreader->read_point()) {
         pip_collector.add_point(
           pjHelper.coord_transform_fwd(
@@ -454,7 +494,13 @@ struct PointCloudCropper : public PointCloudCropperInterface {
           ), 
           lasreader->point.get_classification()
         );
+        acqusition_year = getAcquisitionYearOfPoint(&lasreader->point);
       }
+      if (useFileCreationYear(lasreader)) {
+        acqusition_year = (int)lasreader->header.file_creation_year;
+      }
+      spdlog::info("Point cloud acquisition year: {}", acqusition_year); // just for debug
+
       pjHelper.clear_fwd_crs_transform();
       lasreader->close();
       delete lasreader;
