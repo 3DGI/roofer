@@ -4,3 +4,8 @@ cmake-build-*
 # IDE
 .idea
 .run
+
+# Test dirs
+tests/output/objects
+tests/output/features.txt
+resources/roofer_data
