@@ -6,6 +6,8 @@ cmake-build-*
 .run
 
 # Test dirs
-tests/output/objects
-tests/output/features.txt
+tests/run-all-balazs.sh
+tests/output/*
+!tests/output/README.md
+!tests/output/label-style.qml
 resources/roofer_data
