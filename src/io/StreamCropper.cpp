@@ -16,6 +16,7 @@ class PointsInPolygonsCollector  {
   std::vector<LinearRing>& polygons;
   std::vector<PointCollection>& point_clouds;
   vec1f& ground_elevations;
+  vec1i& acquisition_years;
 
   // ground elevations
   std::vector<std::vector<arr3f>> ground_buffer_points;
@@ -25,7 +26,6 @@ class PointsInPolygonsCollector  {
   std::vector<vec1f> z_ground;
   std::unordered_map<std::unique_ptr<arr3f>, std::vector<size_t>> points_overlap; // point, [poly id's], these are points that intersect with multiple polygons
 
-  std::vector<int> acquisition_years;
   int ground_class, building_class;
   
   public:
@@ -37,17 +37,18 @@ class PointsInPolygonsCollector  {
     std::vector<LinearRing>& buf_polygons, 
     std::vector<PointCollection>& point_clouds, 
     vec1f& ground_elevations, 
+    vec1i& acquisition_years, 
     float& cellsize, 
     float& buffer,
     int ground_class=2,
     int building_class=6
     )
-    : polygons(polygons), point_clouds(point_clouds), ground_elevations(ground_elevations), ground_class(ground_class), building_class(building_class) {
+    : polygons(polygons), point_clouds(point_clouds), ground_elevations(ground_elevations), ground_class(ground_class), building_class(building_class), acquisition_years(acquisition_years) {
     // point_clouds_ground.resize(polygons.size());
     point_clouds.resize(polygons.size());
     z_ground.resize(polygons.size());
     ground_buffer_points.resize(polygons.size());
-    acquisition_years.resize(polygons.size());
+    acquisition_years.resize(polygons.size(), 0);
 
     for (size_t i=0; i< point_clouds.size(); ++i) {
       point_clouds.at(i).attributes.insert_vec<int>("classification");
@@ -101,7 +102,7 @@ class PointsInPolygonsCollector  {
     }
   }
 
-  void add_point(arr3f point, int point_class) {
+  void add_point(arr3f point, int point_class, int acqusition_year) {
     // look up grid index cell and do pip for all polygons retreived from that cell
     size_t lincoord = pindex.getLinearCoord(point[0],point[1]);
     if (lincoord >= pindex_vals.size() || lincoord < 0) {
@@ -140,6 +141,7 @@ class PointsInPolygonsCollector  {
           } else if (point_class == building_class) {
               poly_intersect.push_back(poly_i);
           }
+          acquisition_years[poly_i] = std::max(acqusition_year, acquisition_years[poly_i]);
         } else if (point_class == ground_class) {
           ground_buffer_points[poly_i].push_back( point );
         }
@@ -308,8 +310,9 @@ int getAcquisitionYearOfPoint(LASpoint* laspoint) {
   // GPS epoch - UNIX epoch + 10^9
   // -10^9 is the adjustment in the gps time to lower the value
   auto gps_time_unix_epoch = (std::time_t)(adjusted_gps_time + 1315964800.0);
-  int acquisition_year = std::localtime(&gps_time_unix_epoch)->tm_year + 1900;
-  return acquisition_year;
+  auto lt = std::localtime(&gps_time_unix_epoch);
+  // spdlog::info("{}-{}-{}", lt->tm_year + 1900, lt->tm_mon, lt->tm_mday);
+  return lt->tm_year + 1900;
 }
 
 // If GPS Week Time is used on the points, then we use the 'file creation year'
@@ -379,6 +382,7 @@ struct PointCloudCropper : public PointCloudCropperInterface {
     std::vector<LinearRing>& buf_polygons,
     std::vector<PointCollection>& point_clouds,
     vec1f& ground_elevations,
+    vec1i& acquisition_years,
     PointCloudCropperConfig cfg
   ) {
     // vec1f ground_elevations;
@@ -393,6 +397,7 @@ struct PointCloudCropper : public PointCloudCropperInterface {
       buf_polygons, 
       point_clouds, 
       ground_elevations, 
+      acquisition_years,
       cfg.cellsize, 
       cfg.buffer, 
       cfg.ground_class, 
@@ -485,22 +490,25 @@ struct PointCloudCropper : public PointCloudCropperInterface {
       // last point in the AOI. Unless, GPS Week Time is used, in which case
       // we default to the 'file creation year'.
       int acqusition_year(0);
+      bool use_file_creation_year = useFileCreationYear(lasreader);
+      if (use_file_creation_year) {
+        acqusition_year = (int)lasreader->header.file_creation_year;
+      }
       while (lasreader->read_point()) {
+        if (!use_file_creation_year) acqusition_year = getAcquisitionYearOfPoint(&lasreader->point);
         pip_collector.add_point(
           pjHelper.coord_transform_fwd(
             lasreader->point.get_x(), 
             lasreader->point.get_y(), 
             lasreader->point.get_z()
           ), 
-          lasreader->point.get_classification()
+          lasreader->point.get_classification(),
+          acqusition_year
         );
-        acqusition_year = getAcquisitionYearOfPoint(&lasreader->point);
-      }
-      if (useFileCreationYear(lasreader)) {
-        acqusition_year = (int)lasreader->header.file_creation_year;
+        
       }
       spdlog::info("Point cloud acquisition year: {}", acqusition_year); // just for debug
-
+      
       pjHelper.clear_fwd_crs_transform();
       lasreader->close();
       delete lasreader;

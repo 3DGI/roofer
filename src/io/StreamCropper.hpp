@@ -28,6 +28,7 @@ namespace roofer {
       std::vector<LinearRing>& buf_polygons,
       std::vector<PointCollection>& point_clouds,
       vec1f& ground_elevations,
+      vec1i& acquisition_years,
       PointCloudCropperConfig cfg = PointCloudCropperConfig{}
     ) = 0;
   };

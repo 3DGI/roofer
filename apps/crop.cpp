@@ -59,7 +59,7 @@ struct InputPointcloud {
   std::string path;
   std::string name;
   int quality;
-  int date;
+  int date = 0;
   int bld_class = 6;
   int grnd_class = 2;
   roofer::vec1f nodata_radii;
@@ -70,6 +70,7 @@ struct InputPointcloud {
   std::vector<roofer::PointCollection> building_clouds;
   std::vector<roofer::ImageMap> building_rasters;
   roofer::vec1f ground_elevations;
+  roofer::vec1i acquisition_years;
 };
 
 int main(int argc, const char * argv[]) {
@@ -286,17 +287,23 @@ int main(int argc, const char * argv[]) {
   std::map<std::string, std::vector<roofer::PointCollection>> point_clouds;
   for (auto& ipc : input_pointclouds) {
     spdlog::info("Cropping pointcloud {}...", ipc.name);
+
     PointCloudCropper->process(
       ipc.path,
       footprints,
       buffered_footprints,
       ipc.building_clouds,
       ipc.ground_elevations,
+      ipc.acquisition_years,
       {
         .ground_class = ipc.grnd_class, 
         .building_class = ipc.bld_class
       }
     );
+    if (ipc.date!=0) {
+      spdlog::info("Overriding acquisition year from config file");
+      std::fill(ipc.acquisition_years.begin(), ipc.acquisition_years.end(), ipc.date);
+    }
   }
 
   // compute rasters
@@ -380,6 +387,7 @@ int main(int argc, const char * argv[]) {
   auto bid_vec = attributes.get_if<std::string>(building_bid_attribute);
   auto& pc_select = attributes.insert_vec<std::string>("pc_select");
   auto& pc_source = attributes.insert_vec<std::string>("pc_source");
+  auto& pc_year = attributes.insert_vec<int>("pc_year");
   std::unordered_map<std::string, roofer::vec1s> jsonl_paths;
   std::string bid;
   bool only_write_selected = !output_all;
@@ -405,7 +413,7 @@ int main(int argc, const char * argv[]) {
             yoc_vec ? (*yoc_vec)[i].value_or(-1) : -1,
             ipc.name,
             ipc.quality,
-            ipc.date,
+            ipc.acquisition_years[i],
             j++            
           }
         );
@@ -438,6 +446,7 @@ int main(int argc, const char * argv[]) {
     }
 
     pc_source.push_back(selected->name);
+    pc_year.push_back(selected->date);
     {
       // fs::create_directories(fs::path(fname).parent_path());
       std::string fp_path = fmt::format(building_gpkg_file_spec, fmt::arg("bid", bid), fmt::arg("path", output_path));
@@ -481,9 +490,6 @@ int main(int argc, const char * argv[]) {
           {"GF_PROCESS_OFFSET_X", (*pj->data_offset)[0]},
           {"GF_PROCESS_OFFSET_Y", (*pj->data_offset)[1]},
           {"GF_PROCESS_OFFSET_Z", (*pj->data_offset)[2]},
-
-          {"U_SOURCE", ipc.name},
-          {"U_SURVEY_DATE", std::to_string(ipc.date)},
         };
 
         if (write_metadata) {

@@ -4,13 +4,11 @@ bid = "identificatie"
 
 [[input.pointclouds]]
 name = "AHN3"
-date = 2014
 quality = 1
 path = 'resources/roofer_data/all-ahn-ahn3.laz'
 
 [[input.pointclouds]]
 name = "AHN4"
-date = 2020
 quality = 0
 path = 'resources/roofer_data/all-ahn-ahn4.laz'
 
