@@ -110,7 +110,7 @@ int main(int argc, const char * argv[]) {
   // pointclouds, footprints
   float max_point_density = 20;
   float cellsize = 0.5;
-  float skip_area = 10000.0;
+  float skip_area = 69000.0;
   std::string year_of_construction_attribute = "oorspronkelijkbouwjaar";
   std::string skip_attribute = "kas_warenhuis";
   std::string config_path;
