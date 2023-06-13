@@ -110,6 +110,7 @@ int main(int argc, const char * argv[]) {
   // TOML config parsing
   // pointclouds, footprints
   float max_point_density = 20;
+  float max_point_density_skip = 5;
   float cellsize = 0.5;
   float skip_area = 69000.0;
   std::string year_of_construction_attribute = "oorspronkelijkbouwjaar";
@@ -329,24 +330,35 @@ int main(int argc, const char * argv[]) {
       ipc.nodata_fractions[i] = roofer::computeNoDataFraction(ipc.building_rasters[i]);
       ipc.pt_densities[i] = roofer::computePointDensity(ipc.building_rasters[i]);
 
+      auto target_density = max_point_density;
+      bool skip = *(*skip_vec)[i];
+      if (skip) {
+        target_density = max_point_density_skip;
+        spdlog::info("Applying extra thinning and skipping nodata circle calculation [skip_attribute = {}]", skip);
+      }
+
       gridthinPointcloud(
         ipc.building_clouds[i], 
         ipc.building_rasters[i]["cnt"],
-        max_point_density
+        target_density
       );
 
-      roofer::compute_nodata_circle(
-        ipc.building_clouds[i],
-        footprints[i],
-        &ipc.nodata_radii[i],
-        &nodata_c
-      );
-      if (write_index) {
-        roofer::draw_circle(
-          ipc.nodata_circles[i],
-          ipc.nodata_radii[i],
-          nodata_c
+      if (skip) {
+        ipc.nodata_radii[i] = 0;
+      } else {
+        roofer::compute_nodata_circle(
+          ipc.building_clouds[i],
+          footprints[i],
+          &ipc.nodata_radii[i],
+          &nodata_c
         );
+        if (write_index) {
+          roofer::draw_circle(
+            ipc.nodata_circles[i],
+            ipc.nodata_radii[i],
+            nodata_c
+          );
+        }
       }
     }
   }
