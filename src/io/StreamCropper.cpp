@@ -310,7 +310,7 @@ int getAcquisitionYearOfPoint(LASpoint* laspoint) {
   // GPS epoch - UNIX epoch + 10^9
   // -10^9 is the adjustment in the gps time to lower the value
   auto gps_time_unix_epoch = (std::time_t)(adjusted_gps_time + 1315964800.0);
-  auto lt = std::localtime(&gps_time_unix_epoch);
+  auto lt = std::gmtime(&gps_time_unix_epoch);
   // spdlog::info("{}-{}-{}", lt->tm_year + 1900, lt->tm_mon, lt->tm_mday);
   return lt->tm_year + 1900;
 }
