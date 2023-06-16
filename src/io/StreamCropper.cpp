@@ -448,7 +448,7 @@ struct PointCloudCropper : public PointCloudCropperInterface {
       }
       
       if (!lasreader){
-        spdlog::info ("cannot read las file: {}", lasfile);
+        spdlog::warn("cannot read las file: {}", lasfile);
         continue;
       }
 
