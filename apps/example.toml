@@ -12,16 +12,17 @@ name = "AHN4"
 quality = 0
 path = '/home/ravi/git/roofer/roofer_data/yoc-2022-low-coverage-ahn4.laz'
 
-# [[input.pointclouds]]
-# name = "KAD2020"
-# date = 2020
-# quality = 2
-# path = '/home/ravi/git/roofer/roofer_data/yoc-2022-low-coverage-kadaster.laz'
+[[input.pointclouds]]
+name = "KAD2020"
+date = 2020
+quality = 2
+force_low_lod = false
+path = '/home/ravi/git/roofer/roofer_data/yoc-2022-low-coverage-kadaster.laz'
 
 [parameters]
 cellsize = 0.5
 max_point_density = 20
-skip_attribute = 'kas_warenhuis'
+low_lod_attribute = 'kas_warenhuis'
 year_of_construction_attribute = 'oorspronkelijkbouwjaar'
 
 [output]

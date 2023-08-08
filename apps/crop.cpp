@@ -62,6 +62,7 @@ struct InputPointcloud {
   int date = 0;
   int bld_class = 6;
   int grnd_class = 2;
+  bool force_low_lod = false;
   roofer::vec1f nodata_radii;
   roofer::vec1f nodata_fractions;
   roofer::vec1f pt_densities;
@@ -110,11 +111,11 @@ int main(int argc, const char * argv[]) {
   // TOML config parsing
   // pointclouds, footprints
   float max_point_density = 20;
-  float max_point_density_skip = 5;
+  float max_point_density_low_lod = 5;
   float cellsize = 0.5;
-  float skip_area = 69000.0;
+  float low_lod_area = 69000.0;
   std::string year_of_construction_attribute = "oorspronkelijkbouwjaar";
-  std::string skip_attribute = "kas_warenhuis";
+  std::string low_lod_attribute = "kas_warenhuis";
   std::string config_path;
   std::string building_toml_file_spec;
   std::string building_las_file_spec;
@@ -167,6 +168,9 @@ int main(int argc, const char * argv[]) {
         if( auto n = (*tb)["date"].value<int>(); n.has_value() ){
             pc.date = *n;
         }
+        if( auto n = (*tb)["force_low_lod"].value<bool>(); n.has_value() ){
+            pc.force_low_lod = *n;
+        }
 
         if( auto n = (*tb)["building_class"].value<int>(); n.has_value() ){
             pc.bld_class = *n;
@@ -192,12 +196,12 @@ int main(int argc, const char * argv[]) {
     if(cellsize_.has_value())
       cellsize = *cellsize_;
 
-    auto skip_area_ = config["parameters"]["skip_area"].value<int>();
-    if(skip_area_.has_value())
-      skip_area = *skip_area_;
-    auto skip_attribute_ = config["parameters"]["skip_attribute"].value<std::string>();
-    if(skip_attribute_.has_value())
-      skip_attribute = *skip_attribute_;
+    auto low_lod_area_ = config["parameters"]["low_lod_area"].value<int>();
+    if(low_lod_area_.has_value())
+      low_lod_area = *low_lod_area_;
+    auto low_lod_attribute_ = config["parameters"]["low_lod_attribute"].value<std::string>();
+    if(low_lod_attribute_.has_value())
+      low_lod_attribute = *low_lod_attribute_;
     auto year_of_construction_attribute_ = config["parameters"]["year_of_construction_attribute"].value<std::string>();
     if(year_of_construction_attribute_.has_value())
       year_of_construction_attribute = *year_of_construction_attribute_;
@@ -261,15 +265,15 @@ int main(int argc, const char * argv[]) {
   
   const unsigned N_fp = footprints.size();
 
-  // check if skip_attribute exists, if not then create it
-  if(!attributes.get_if<bool>(skip_attribute)) {
-    auto& vec = attributes.insert_vec<bool>(skip_attribute);
+  // check if low_lod_attribute exists, if not then create it
+  if(!attributes.get_if<bool>(low_lod_attribute)) {
+    auto& vec = attributes.insert_vec<bool>(low_lod_attribute);
     vec.resize(N_fp, false);
   }
-  auto skip_vec = attributes.get_if<bool>(skip_attribute);
+  auto low_lod_vec = attributes.get_if<bool>(low_lod_attribute);
   for (size_t i=0; i<N_fp; ++i) {
     // need dereference operator here for dereferencing pointer and getting std::option value
-    (*skip_vec)[i] = *(*skip_vec)[i] || std::fabs(footprints[i].signed_area()) > skip_area;
+    (*low_lod_vec)[i] = *(*low_lod_vec)[i] || std::fabs(footprints[i].signed_area()) > low_lod_area;
   }
 
   // get yoc attribute vector (nullptr if it does not exist)
@@ -331,10 +335,10 @@ int main(int argc, const char * argv[]) {
       ipc.pt_densities[i] = roofer::computePointDensity(ipc.building_rasters[i]);
 
       auto target_density = max_point_density;
-      bool skip = *(*skip_vec)[i];
-      if (skip) {
-        target_density = max_point_density_skip;
-        spdlog::info("Applying extra thinning and skipping nodata circle calculation [skip_attribute = {}]", skip);
+      bool low_lod = *(*low_lod_vec)[i];
+      if (low_lod) {
+        target_density = max_point_density_low_lod;
+        spdlog::info("Applying extra thinning and skipping nodata circle calculation [low_lod_attribute = {}]", low_lod);
       }
 
       gridthinPointcloud(
@@ -343,7 +347,7 @@ int main(int argc, const char * argv[]) {
         target_density
       );
 
-      if (skip) {
+      if (low_lod) {
         ipc.nodata_radii[i] = 0;
       } else {
         roofer::compute_nodata_circle(
@@ -459,6 +463,9 @@ int main(int argc, const char * argv[]) {
 
     pc_source.push_back(selected->name);
     pc_year.push_back(selected->date);
+    if( input_pointclouds[selected->index].force_low_lod ) {
+      (*low_lod_vec)[i] = true;
+    }
     {
       // fs::create_directories(fs::path(fname).parent_path());
       std::string fp_path = fmt::format(building_gpkg_file_spec, fmt::arg("bid", bid), fmt::arg("path", output_path));
@@ -499,9 +506,10 @@ int main(int argc, const char * argv[]) {
           {"OUTPUT_JSONL", jsonl_path },
 
           {"GF_PROCESS_OFFSET_OVERRIDE", true},
-          {"GF_PROCESS_OFFSET_X", (*pj->data_offset)[0]},
-          {"GF_PROCESS_OFFSET_Y", (*pj->data_offset)[1]},
-          {"GF_PROCESS_OFFSET_Z", (*pj->data_offset)[2]},
+          {"GF_PROCESS_OFFSET_X", (*pj->data_offset)[0] },
+          {"GF_PROCESS_OFFSET_Y", (*pj->data_offset)[1] },
+          {"GF_PROCESS_OFFSET_Z", (*pj->data_offset)[2] },
+          {"skip_attribute", *(*low_lod_vec)[i] },
         };
 
         if (write_metadata) {
