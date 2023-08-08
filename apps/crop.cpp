@@ -509,7 +509,7 @@ int main(int argc, const char * argv[]) {
           {"GF_PROCESS_OFFSET_X", (*pj->data_offset)[0] },
           {"GF_PROCESS_OFFSET_Y", (*pj->data_offset)[1] },
           {"GF_PROCESS_OFFSET_Z", (*pj->data_offset)[2] },
-          {"skip_attribute", *(*low_lod_vec)[i] },
+          {"skip_attribute_name", *(*low_lod_vec)[i] },
         };
 
         if (write_metadata) {
