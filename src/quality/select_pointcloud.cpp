@@ -41,6 +41,16 @@ namespace roofer {
   std::vector<bool> computeMask(const std::vector<float>& image_array,
                                 const float& nodataval);
 
+  const CandidatePointCloud* getLatestPointCloud(const std::vector<CandidatePointCloud>& candidates) {
+    std::vector<const CandidatePointCloud*> candidates_date;
+    for(auto& cand : candidates) {
+      candidates_date.push_back(&cand);
+    }
+    std::sort(candidates_date.begin(), candidates_date.end(),
+              roofer::compareByDate);
+    return candidates_date[0];
+  }  
+
   const PointCloudSelectResult selectPointCloud(const std::vector<CandidatePointCloud>& candidates,
                                                 const selectPointCloudConfig cfg) {
     PointCloudSelectResult result;
@@ -52,22 +62,12 @@ namespace roofer {
       candidates_date.push_back(&cand);
       candidates_coverage.push_back(&cand);
     }
-    CandidatePointCloud* candidate_selected;
     std::sort(candidates_date.begin(), candidates_date.end(),
               roofer::compareByDate);
     std::sort(candidates_quality.begin(), candidates_quality.end(),
               roofer::compareByQuality);
     std::sort(candidates_coverage.begin(), candidates_coverage.end(),
               roofer::compareByNoDataFraction);
-
-    if(candidates_date[0]->building_yoc != -1) {
-      if(candidates_date[0]->building_yoc > candidates_date[0]->date) {
-        // spdlog::debug("_LATEST_BUT_OUTDATED");
-        result.explanation = PointCloudSelectExplanation::_LATEST_BUT_OUTDATED;
-        result.selected_pointcloud = candidates_date[0];
-        return result;
-      }
-    }
 
     // get the highest quality candidate with sufficient coverage
     const CandidatePointCloud* best_suffcient = nullptr;

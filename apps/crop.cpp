@@ -63,6 +63,7 @@ struct InputPointcloud {
   int bld_class = 6;
   int grnd_class = 2;
   bool force_low_lod = false;
+  bool select_only_for_date = false;
   roofer::vec1f nodata_radii;
   roofer::vec1f nodata_fractions;
   roofer::vec1f pt_densities;
@@ -146,9 +147,15 @@ int main(int argc, const char * argv[]) {
     if(tml_path_footprint.has_value())
       path_footprint = *tml_path_footprint;
 
-    auto tml_bid = config["input"]["footprint"]["bid"].value<std::string>();
-    if(tml_bid.has_value())
-      building_bid_attribute = *tml_bid;
+    auto id_attribute_ = config["input"]["footprint"]["id_attribute"].value<std::string>();
+    if(id_attribute_.has_value())
+      building_bid_attribute = *id_attribute_;
+    auto low_lod_attribute_ = config["input"]["low_lod_attribute"].value<std::string>();
+    if(low_lod_attribute_.has_value())
+      low_lod_attribute = *low_lod_attribute_;
+    auto year_of_construction_attribute_ = config["input"]["year_of_construction_attribute"].value<std::string>();
+    if(year_of_construction_attribute_.has_value())
+      year_of_construction_attribute = *year_of_construction_attribute_;
 
     auto tml_pointclouds = config["input"]["pointclouds"];
     if (toml::array* arr = tml_pointclouds.as_array())
@@ -170,6 +177,9 @@ int main(int argc, const char * argv[]) {
         }
         if( auto n = (*tb)["force_low_lod"].value<bool>(); n.has_value() ){
             pc.force_low_lod = *n;
+        }
+        if( auto n = (*tb)["select_only_for_date"].value<bool>(); n.has_value() ){
+            pc.select_only_for_date = *n;
         }
 
         if( auto n = (*tb)["building_class"].value<int>(); n.has_value() ){
@@ -199,12 +209,6 @@ int main(int argc, const char * argv[]) {
     auto low_lod_area_ = config["parameters"]["low_lod_area"].value<int>();
     if(low_lod_area_.has_value())
       low_lod_area = *low_lod_area_;
-    auto low_lod_attribute_ = config["parameters"]["low_lod_attribute"].value<std::string>();
-    if(low_lod_attribute_.has_value())
-      low_lod_attribute = *low_lod_attribute_;
-    auto year_of_construction_attribute_ = config["parameters"]["year_of_construction_attribute"].value<std::string>();
-    if(year_of_construction_attribute_.has_value())
-      year_of_construction_attribute = *year_of_construction_attribute_;
 
     auto building_toml_file_spec_ = config["output"]["building_toml_file"].value<std::string>();
     if(building_toml_file_spec_.has_value())
@@ -418,21 +422,25 @@ int main(int argc, const char * argv[]) {
     
     std::vector<roofer::CandidatePointCloud> candidates;
     candidates.reserve(input_pointclouds.size());
+    std::vector<roofer::CandidatePointCloud> candidates_just_for_data;
     {
       int j=0;
       for (auto& ipc : input_pointclouds) {
-        candidates.push_back(
-          roofer::CandidatePointCloud {
-            ipc.nodata_radii[i],
-            ipc.nodata_fractions[i],
-            ipc.building_rasters[i],
-            yoc_vec ? (*yoc_vec)[i].value_or(-1) : -1,
-            ipc.name,
-            ipc.quality,
-            ipc.acquisition_years[i],
-            j++            
-          }
-        );
+        auto cpc = roofer::CandidatePointCloud {
+          ipc.nodata_radii[i],
+          ipc.nodata_fractions[i],
+          ipc.building_rasters[i],
+          yoc_vec ? (*yoc_vec)[i].value_or(-1) : -1,
+          ipc.name,
+          ipc.quality,
+          ipc.acquisition_years[i],
+          j++
+        };
+        if( ipc.select_only_for_date ) {
+          candidates_just_for_data.push_back( cpc );
+        } else {
+          candidates.push_back( cpc );
+        }
         jsonl_paths.insert({ipc.name, roofer::vec1s{}});
       }
       jsonl_paths.insert({"", roofer::vec1s{}});
@@ -440,6 +448,28 @@ int main(int argc, const char * argv[]) {
 
     roofer::PointCloudSelectResult sresult = roofer::selectPointCloud(candidates, select_pc_cfg);
     const roofer::CandidatePointCloud* selected = sresult.selected_pointcloud;
+    
+    // this is a sanity check and should never happen
+    if (!selected) {
+      spdlog::error("Unable to select pointcloud");
+      exit(1);
+    }
+
+    // check if yoc_attribute indicates this building to be built after selected PC
+    int yoc = yoc_vec ? (*yoc_vec)[i].value_or(-1) : -1;
+    if (yoc != -1 && yoc > selected->date) {
+      // force selection of latest pointcloud
+      selected = getLatestPointCloud(candidates);
+      sresult.explanation = roofer::PointCloudSelectExplanation::_LATEST;
+      // overrule if there was a more recent pointcloud with select_only_for_date = true
+      if (candidates_just_for_data.size()) {
+        if ( candidates_just_for_data[0].date > selected->date ) {
+          selected = & candidates_just_for_data[0];
+          // sresult.explanation = roofer::PointCloudSelectExplanation::_LATEST;
+        }
+      }
+    }
+
     if (sresult.explanation == roofer::PointCloudSelectExplanation::PREFERRED_AND_LATEST )
       pc_select.push_back("PREFERRED_AND_LATEST");
     else if (sresult.explanation == roofer::PointCloudSelectExplanation::PREFERRED_NOT_LATEST )
@@ -448,18 +478,11 @@ int main(int argc, const char * argv[]) {
       pc_select.push_back("LATEST_WITH_MUTATION");
     else if (sresult.explanation == roofer::PointCloudSelectExplanation::_HIGHEST_YET_INSUFFICIENT_COVERAGE )
       pc_select.push_back("_HIGHEST_YET_INSUFFICIENT_COVERAGE");
-    else if (sresult.explanation == roofer::PointCloudSelectExplanation::_LATEST_BUT_OUTDATED ) {
-      pc_select.push_back("_LATEST_BUT_OUTDATED");
+    else if (sresult.explanation == roofer::PointCloudSelectExplanation::_LATEST ) {
+      pc_select.push_back("_LATEST");
       // // clear pc
       // ipc[selected->index].building_clouds[i].clear();
-    }
-    else pc_select.push_back("NONE");
-
-    // this is a sanity check and should never happen
-    if (!selected) {
-      spdlog::error("Unable to select pointcloud");
-      exit(1);
-    }
+    } else pc_select.push_back("NONE");
 
     pc_source.push_back(selected->name);
     pc_year.push_back(selected->date);
@@ -509,7 +532,7 @@ int main(int argc, const char * argv[]) {
           {"GF_PROCESS_OFFSET_X", (*pj->data_offset)[0] },
           {"GF_PROCESS_OFFSET_Y", (*pj->data_offset)[1] },
           {"GF_PROCESS_OFFSET_Z", (*pj->data_offset)[2] },
-          {"skip_attribute_name", *(*low_lod_vec)[i] },
+          {"skip_attribute_name", low_lod_attribute },
         };
 
         if (write_metadata) {

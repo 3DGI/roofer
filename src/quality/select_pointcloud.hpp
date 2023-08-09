@@ -21,7 +21,7 @@ namespace roofer {
     PREFERRED_NOT_LATEST,// P
     LATEST_WITH_MUTATION,// LM
     _HIGHEST_YET_INSUFFICIENT_COVERAGE,// _C(M)
-    _LATEST_BUT_OUTDATED // _L
+    _LATEST // _L
   };
 
   struct PointCloudSelectResult {
@@ -44,6 +44,7 @@ namespace roofer {
     float threshold_mutation_difference = 1.2;
   };
 
+  const CandidatePointCloud* getLatestPointCloud(const std::vector<CandidatePointCloud>& candidates);
 
   // return either 
   // 1. latest, unless there is coverage issue (case AHN 3/4, both have good quality)
