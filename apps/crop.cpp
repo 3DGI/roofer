@@ -360,13 +360,13 @@ int main(int argc, const char * argv[]) {
           &ipc.nodata_radii[i],
           &nodata_c
         );
-        if (write_index) {
-          roofer::draw_circle(
-            ipc.nodata_circles[i],
-            ipc.nodata_radii[i],
-            nodata_c
-          );
-        }
+        // if (write_index) {
+        //   roofer::draw_circle(
+        //     ipc.nodata_circles[i],
+        //     ipc.nodata_radii[i],
+        //     nodata_c
+        //   );
+        // }
       }
     }
   }
@@ -579,9 +579,11 @@ int main(int argc, const char * argv[]) {
   if (write_index) {
     std::string index_file = fmt::format(index_file_spec, fmt::arg("path", output_path));
     VectorWriter->writePolygons(index_file, footprints, attributes);
-    for (auto& ipc : input_pointclouds) {
-      VectorWriter->writePolygons(index_file+"_"+ipc.name+"_nodatacircle.gpkg", ipc.nodata_circles, attributes);
-    }
+    
+    // write nodata circles
+    // for (auto& ipc : input_pointclouds) {
+    //   VectorWriter->writePolygons(index_file+"_"+ipc.name+"_nodatacircle.gpkg", ipc.nodata_circles, attributes);
+    // }
   }
 
   // write the txt containing paths to all jsonl features to be written by reconstruct

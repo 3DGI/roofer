@@ -328,7 +328,7 @@ bool useFileCreationYear(LASreader* lasreader) {
     spdlog::info("No good GPS time available, defaulting to file creation year");
     // If it is GPS Week Time, probably could handle this better here, but I'm
     // simplifying. Also, AHN3 for instance uses week time, but there is no way
-    // of knowing which week is it...
+    // of knowing which week is date...
     // https://geoforum.nl/t/ahn3-datum-tijd-uit-gps-tijd-converteren/3476
     // https://geoforum.nl/t/ahn3-verschillende-gps-time-types/3536
     return true;
