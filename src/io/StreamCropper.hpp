@@ -15,6 +15,7 @@ namespace roofer {
     int building_class = 6;
     bool clear_if_insufficient = true;
     std::string wkt_="";
+    bool handle_overlap_points = false;
   };
   struct PointCloudCropperInterface {
 

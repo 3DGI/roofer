@@ -27,6 +27,7 @@ class PointsInPolygonsCollector  {
   std::unordered_map<std::unique_ptr<arr3f>, std::vector<size_t>> points_overlap; // point, [poly id's], these are points that intersect with multiple polygons
 
   int ground_class, building_class;
+  bool handle_overlap_points;
   
   public:
   Box completearea_bb;
@@ -41,9 +42,10 @@ class PointsInPolygonsCollector  {
     float& cellsize, 
     float& buffer,
     int ground_class=2,
-    int building_class=6
+    int building_class=6,
+    bool handle_overlap_points=false // ·
     )
-    : polygons(polygons), point_clouds(point_clouds), ground_elevations(ground_elevations), ground_class(ground_class), building_class(building_class), acquisition_years(acquisition_years) {
+    : polygons(polygons), point_clouds(point_clouds), ground_elevations(ground_elevations), ground_class(ground_class), building_class(building_class), acquisition_years(acquisition_years), handle_overlap_points(handle_overlap_points) {
     // point_clouds_ground.resize(polygons.size());
     point_clouds.resize(polygons.size());
     z_ground.resize(polygons.size());
@@ -149,14 +151,18 @@ class PointsInPolygonsCollector  {
     }
 
     if (point_class == building_class) {
-      if (poly_intersect.size() == 1) {
-        auto& point_cloud = point_clouds.at(poly_intersect[0]);
-        auto classification = point_cloud.attributes.get_if<int>("classification");
-        point_cloud.push_back(point);
-        (*classification).push_back(6);
-      } else if (poly_intersect.size() > 1) {
+      if (poly_intersect.size() > 1 && handle_overlap_points) {
+        // decide later to which polygon to assign this point to
         points_overlap[std::make_unique<arr3f>(point)] = poly_intersect;
-      }
+      } else {
+        // assign point to all intersecting polygons
+        for (auto& poly_i : poly_intersect) {
+          auto& point_cloud = point_clouds.at(poly_i);
+          auto classification = point_cloud.attributes.get_if<int>("classification");
+          point_cloud.push_back(point);
+          (*classification).push_back(6);
+        }
+      } 
     }
     delete pipoint;
   }
@@ -216,35 +222,37 @@ class PointsInPolygonsCollector  {
     ground_buffer_points.clear();
 
     // assign points_overlap
-    for(auto& [p, polylist] : points_overlap) {
-      for( auto& poly_i : polylist ) {
-        poly_info[poly_i].pt_count_bld_overlap++;
-      }
-    }
-    for(auto& [p, polylist] : points_overlap) {
-      // find best polygon to assign this point to
-      std::sort(polylist.begin(), polylist.end(), [&max_density_delta, &poly_info, this](auto& d1, auto& d2) {
-        // we look at the maximim possible point density (proxy for point coverage) and the average elevation
-        // compute poitncloud density for both polygons
-        float pd1 = (poly_info[d1].pt_count_bld + poly_info[d1].pt_count_bld_overlap) / poly_info[d1].area;
-        float pd2 = (poly_info[d2].pt_count_bld + poly_info[d2].pt_count_bld_overlap) / poly_info[d2].area;
-
-        // check if the difference in point densities is less than 5%
-        if (std::abs(1 - pd1/pd2) < max_density_delta) {
-          // if true, then look at the polygon with the highest elevation point cloud
-          return poly_info[d1].avg_elevation < poly_info[d2].avg_elevation;
-        } else {
-          // otherwise decide based on the density values
-          return pd1 < pd2;
+    if (handle_overlap_points) {
+      for(auto& [p, polylist] : points_overlap) {
+        for( auto& poly_i : polylist ) {
+          poly_info[poly_i].pt_count_bld_overlap++;
         }
-      });
-      
-      // now the most suitable polygon (footprint) is the last in the list. We will assign this point to that footprint.
-      auto& point_cloud = point_clouds.at( polylist.back() );
-      auto classification = point_cloud.attributes.get_if<int>("classification");
-      point_cloud.push_back(*p);
-      (*classification).push_back(6);
-      poly_info[ polylist.back() ].pt_count_bld++;
+      }
+      for(auto& [p, polylist] : points_overlap) {
+        // find best polygon to assign this point to
+        std::sort(polylist.begin(), polylist.end(), [&max_density_delta, &poly_info, this](auto& d1, auto& d2) {
+          // we look at the maximim possible point density (proxy for point coverage) and the average elevation
+          // compute poitncloud density for both polygons
+          float pd1 = (poly_info[d1].pt_count_bld + poly_info[d1].pt_count_bld_overlap) / poly_info[d1].area;
+          float pd2 = (poly_info[d2].pt_count_bld + poly_info[d2].pt_count_bld_overlap) / poly_info[d2].area;
+
+          // check if the difference in point densities is less than 5%
+          if (std::abs(1 - pd1/pd2) < max_density_delta) {
+            // if true, then look at the polygon with the highest elevation point cloud
+            return poly_info[d1].avg_elevation < poly_info[d2].avg_elevation;
+          } else {
+            // otherwise decide based on the density values
+            return pd1 < pd2;
+          }
+        });
+        
+        // now the most suitable polygon (footprint) is the last in the list. We will assign this point to that footprint.
+        auto& point_cloud = point_clouds.at( polylist.back() );
+        auto classification = point_cloud.attributes.get_if<int>("classification");
+        point_cloud.push_back(*p);
+        (*classification).push_back(6);
+        poly_info[ polylist.back() ].pt_count_bld++;
+      }
     }
 
     // Compute average elevation per polygon
@@ -401,7 +409,8 @@ struct PointCloudCropper : public PointCloudCropperInterface {
       cfg.cellsize, 
       cfg.buffer, 
       cfg.ground_class, 
-      cfg.building_class
+      cfg.building_class,
+      cfg.handle_overlap_points
     };
 
     auto filepaths = source;
