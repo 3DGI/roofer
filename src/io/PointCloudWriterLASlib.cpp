@@ -1,5 +1,5 @@
 // #include <lasreader.hpp>
-#include "LASWriter.hpp"
+#include "PointCloudWriter.hpp"
 #include <laswriter.hpp>
 
 #include <filesystem>

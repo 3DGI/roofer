@@ -3,7 +3,7 @@
 #include "io/VectorWriter.hpp"
 #include "io/RasterWriter.hpp"
 #include "io/StreamCropper.hpp"
-#include "io/LASWriter.hpp"
+#include "io/PointCloudWriter.hpp"
 #include "geometry/Raster.hpp"
 #include "geometry/Vector2DOps.hpp"
 #include "geometry/NodataCircleComputer.hpp"
