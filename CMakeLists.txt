@@ -55,6 +55,7 @@ add_library(rooferlib
   src/io/RasterWriterGDAL.cpp
   src/io/StreamCropper.cpp
   src/io/PointCloudWriterLASlib.cpp
+  src/io/PointCloudReaderLASlib.cpp
   src/geometry/Raster.cpp
   src/pip_util.cpp
   src/geometry/ShapeDetector.cpp
