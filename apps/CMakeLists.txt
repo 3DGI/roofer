@@ -1,5 +1,12 @@
 include_directories(../src)
 
+add_executable(reconstruct reconstruct.cpp)
+set_target_properties(
+  reconstruct PROPERTIES 
+  CXX_STANDARD 17
+)
+target_link_libraries(reconstruct PRIVATE rooferlib cmake_git_version_tracking)
+
 add_executable(crop crop.cpp)
 set_target_properties(
   crop PROPERTIES 

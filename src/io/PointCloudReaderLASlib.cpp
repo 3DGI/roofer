@@ -117,4 +117,8 @@ class PointCloudReaderLASlib : public PointCloudReaderInterface {
     }
 };
 
+std::unique_ptr<PointCloudReaderInterface> createPointCloudReaderLASlib(projHelperInterface& pjh) {
+  return std::make_unique<PointCloudReaderLASlib>(pjh);
+};
+
 }
