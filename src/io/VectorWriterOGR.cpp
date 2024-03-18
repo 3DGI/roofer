@@ -33,16 +33,6 @@ namespace roofer {
 class VectorWriterOGR : public VectorWriterInterface {
   GDALDatasetUniquePtr poDS;
 
-  std::string srs = "EPSG:7415";
-  std::string conn_string_ = "out";
-  std::string gdaldriver_ = "GPKG";
-  std::string layername_ = "geom";
-  bool overwrite_layer_ = true;
-  bool overwrite_file_ = true;
-  bool create_directories_ = true;
-  bool do_transactions_ = false;
-  int transaction_batch_size_ = 1000;
-
   inline void create_field(OGRLayer* layer, const std::string& name, OGRFieldType field_type) {
     OGRFieldDefn oField(name.c_str(), field_type);
     if (layer->CreateField(&oField) != OGRERR_NONE) {
@@ -185,12 +175,17 @@ class VectorWriterOGR : public VectorWriterInterface {
     auto CRS = srs;
     if (layer == nullptr) {
       OGRSpatialReference oSRS;
-      oSRS.SetFromUserInput(CRS.c_str());
+      if(!srs.empty()) {
+        oSRS.SetFromUserInput(CRS.c_str());
+        layer = dataSource->CreateLayer(layername.c_str(), &oSRS, wkbType, lco);
+        
+        // We set normalise_for_visualisation to true, becuase it seems that GDAL expects as the first coordinate easting/longitude when constructing geometries
+        pjHelper.set_rev_crs_transform(CRS.c_str(), true);
+      } else {
+        layer = dataSource->CreateLayer(layername.c_str(), nullptr, wkbType, lco);
+      }
       // oSRS.SetAxisMappingStrategy(OAMS_AUTHORITY_COMPLIANT);
-      layer = dataSource->CreateLayer(layername.c_str(), &oSRS, wkbType, lco);
-
-      // We set normalise_for_visualisation to true, becuase it seems that GDAL expects as the first coordinate easting/longitude when constructing geometries
-      pjHelper.set_rev_crs_transform(CRS.c_str(), true);
+  
 
       // Create GDAL feature attributes
       for (auto& [name, vecvar] : attributes.get_attributes()) {

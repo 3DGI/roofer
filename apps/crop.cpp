@@ -117,6 +117,7 @@ int main(int argc, const char * argv[]) {
   float low_lod_area = 69000.0;
   std::string year_of_construction_attribute = "oorspronkelijkbouwjaar";
   std::string low_lod_attribute = "kas_warenhuis";
+  std::string output_crs = "";
   std::string config_path;
   std::string building_toml_file_spec;
   std::string building_las_file_spec;
@@ -248,6 +249,10 @@ int main(int argc, const char * argv[]) {
     if(output_path_.has_value())
       output_path = *output_path_;
 
+    auto output_crs_ = config["output"]["crs"].value<std::string>();
+    if(output_crs_.has_value())
+      output_crs = *output_crs_;
+
   } else {
     spdlog::error("No config file specified\n");
     return EXIT_FAILURE;
@@ -256,6 +261,7 @@ int main(int argc, const char * argv[]) {
   auto pj = roofer::createProjHelper();
   auto VectorReader = roofer::createVectorReaderOGR(*pj);
   auto VectorWriter = roofer::createVectorWriterOGR(*pj);
+  VectorWriter->srs = output_crs;
   auto RasterWriter = roofer::createRasterWriterGDAL(*pj);
   auto PointCloudCropper = roofer::createPointCloudCropper(*pj);
   auto VectorOps = roofer::createVector2DOpsGEOS();
