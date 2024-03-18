@@ -7,6 +7,16 @@
 namespace roofer {
   struct VectorWriterInterface {
 
+    std::string srs = "";// "EPSG:7415";
+    std::string conn_string_ = "out";
+    std::string gdaldriver_ = "GPKG";
+    std::string layername_ = "geom";
+    bool overwrite_layer_ = true;
+    bool overwrite_file_ = true;
+    bool create_directories_ = true;
+    bool do_transactions_ = false;
+    int transaction_batch_size_ = 1000;
+
     projHelperInterface& pjHelper;
 
     VectorWriterInterface(projHelperInterface& pjh) : pjHelper(pjh) {};
