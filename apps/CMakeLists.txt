@@ -1,11 +1,17 @@
 include_directories(../src)
 
+# Download the rerun_sdk
+include(FetchContent)
+FetchContent_Declare(rerun_sdk URL
+    https://github.com/rerun-io/rerun/releases/latest/download/rerun_cpp_sdk.zip)
+FetchContent_MakeAvailable(rerun_sdk)
+
 add_executable(reconstruct reconstruct.cpp)
 set_target_properties(
   reconstruct PROPERTIES 
   CXX_STANDARD 17
 )
-target_link_libraries(reconstruct PRIVATE rooferlib cmake_git_version_tracking)
+target_link_libraries(reconstruct PRIVATE rooferlib CGAL::CGAL_Core cmake_git_version_tracking rerun_sdk)
 
 add_executable(crop crop.cpp)
 set_target_properties(

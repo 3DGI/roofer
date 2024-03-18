@@ -1,5 +1,6 @@
 #include "projHelper.hpp"
 #include "io/PointCloudReader.hpp"
+#include "detection/ShapeDetector.hpp"
 
 #include "external/argh.h"
 #include "external/toml.hpp"
@@ -9,32 +10,33 @@
 
 #include "git.h"
 
-#include <cstddef>
-#include <cstdlib>
-#include <iostream>
-#include <fstream>
-#include <filesystem>
-#include <sstream>
-#include <string>
-#include <unordered_map>
-#include <vector>
-namespace fs = std::filesystem;
+#include <rerun.hpp>
+
+// Adapters so we can log eigen vectors as rerun positions:
+template <>
+struct rerun::CollectionAdapter<rerun::Position3D, roofer::PointCollection> {
+  /// Borrow for non-temporary.
+  Collection<rerun::Position3D> operator()(const roofer::PointCollection& container) {
+      return Collection<rerun::Position3D>::borrow(container.data(), container.size());
+  }
+
+  // Do a full copy for temporaries (otherwise the data might be deleted when the temporary is destroyed).
+  Collection<rerun::Position3D> operator()(roofer::PointCollection&& container) {
+      std::vector<rerun::Position3D> positions(container.size());
+      memcpy(positions.data(), container.data(), container.size() * sizeof(roofer::arr3f));
+      return Collection<rerun::Position3D>::take_ownership(std::move(positions));
+  }
+};
 
 void print_help(std::string program_name) {
   // see http://docopt.org/
   fmt::print("Usage:\n");
   fmt::print("   {}", program_name);
-  fmt::print(" -c <file>\n");
   fmt::print("Options:\n");
   // std::cout << "   -v, --version                Print version information\n";
   fmt::print("   -h, --help                   Show this help message\n");
   fmt::print("   -V, --version                Show version\n");
   fmt::print("   -v, --verbose                Be more verbose\n");
-  fmt::print("   -c <file>, --config <file>   Config file\n");
-  fmt::print("   -r, --rasters                Output rasterised building pointclouds\n");
-  fmt::print("   -m, --metadata               Output metadata.json file\n");
-  fmt::print("   -i, --index                  Output index.gpkg file\n");
-  fmt::print("   -a, --all                    Output files for each candidate point cloud instead of only the optimal candidate\n");
 }
 
 void print_version() {
@@ -83,10 +85,37 @@ int main(int argc, const char * argv[]) {
 
   PointReader->open(path_pointcloud);
   spdlog::info("Reading pointcloud from {}", path_pointcloud);
+  roofer::vec1i classification;
   roofer::PointCollection points;
   roofer::AttributeVecMap attributes;
-  PointReader->readPointCloud(points);
+  PointReader->readPointCloud(points, &classification);
 
   spdlog::info("Read {} points", points.size());
+
+
+  // Create a new `RecordingStream` which sends data over TCP to the viewer process.
+  const auto rec = rerun::RecordingStream("Roofer rerun test");
+  // Try to spawn a new viewer instance.
+  rec.spawn().exit_on_failure();
+
+  rec.log("world", 
+    rerun::Collection{rerun::components::AnnotationContext{
+      rerun::datatypes::AnnotationInfo(6, "BUILDING", rerun::datatypes::Rgba32(255,0,0)),
+      rerun::datatypes::AnnotationInfo(2, "GROUND"),
+      rerun::datatypes::AnnotationInfo(1, "UNCLASSIFIED"),
+    }}
+  );
+
+  rec.log("world/raw_points", rerun::Points3D(points).with_class_ids(classification));
+
+  spdlog::info("Start plane detection");
+  auto PlaneDetector = roofer::detection::createPlaneDetector();
+
+  // PlaneDetector->detect(points);
+  spdlog::info("Completed plane detection");
+  // rec.log("world/segmented_points", rerun::Points3D(points).with_class_ids(PlaneDetector->plane_id));
+  spdlog::info("Logged plane detection result");
+  // Log the "my_points" entity with our data, using the `Points3D` archetype.
+  // rec.log("my_points", rerun::Points3D(pts).with_colors(colors).with_radii({0.5f}));
 
 }

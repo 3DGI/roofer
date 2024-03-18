@@ -58,7 +58,7 @@ add_library(rooferlib
   src/io/PointCloudReaderLASlib.cpp
   src/geometry/Raster.cpp
   src/pip_util.cpp
-  src/geometry/ShapeDetector.cpp
+  src/detection/PlaneDetector.cpp
   src/geometry/Vector2DOpsGEOS.cpp
   src/geometry/NodataCircleComputer.cpp
   src/geometry/PointcloudRasteriser.cpp
